@@ -1,0 +1,304 @@
+/**
+ *  for Atari Lynx
+ *
+ * @brief I/O routines
+ * @author Thom Cherryhomes
+ * @email thom dot cherryhomes at gmail dot com
+ */
+
+#include <6502.h>
+#include <lynx.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
+#include <conio.h>
+#include "lynxfnio.h"
+#include "fujinet.h"
+
+
+#define FN_RETRIES   3       // number of retries for commands
+
+unsigned char fn_cmd[512];   // Fujinet command to send + aux bytes (might need to be increased to 1024)
+unsigned short fn_len;       // length of data returned
+
+unsigned char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
+
+FN_ADAPTER_CONFIG fncfg;
+FN_SSID_DETAIL wifi;
+FN_SSID_PASS ssid_pass;
+
+
+
+// helper to send a command that sends no data back
+unsigned char _send_cmd(unsigned int l)
+{
+  unsigned char r, i;
+
+  i = 0;
+  while (i < FN_RETRIES) {
+    r = fnio_send(FN_DEV, &fn_cmd[0], l);
+    if ((r & 0xF0) == NM_ACK)
+      return(1);
+    i++;
+  }
+
+  return(0);
+}
+
+
+// helper to send a command that sends data back
+// it's the callers responsibility to have a buffer of proper length
+// and to cast the data properly
+unsigned char _send_cmd_and_recv_buf(unsigned int l, unsigned char *buf)
+{
+  unsigned char r, i;
+
+  i = 0;
+  while (i < FN_RETRIES) {
+    r = fnio_send(FN_DEV, &fn_cmd[0], l);
+    if ((r & 0xF0) == NM_ACK)
+      break;
+    i++;
+  }
+
+  // get response
+  r = fnio_recv(FN_DEV, buf, &fn_len);
+  if (fn_len !=0)      // did we receive anything?
+    return(1);      // return success
+  else
+    return(0);      // return failure
+}
+
+
+unsigned char fujinet_get_wifi_status(void)
+{
+  unsigned char r;
+  unsigned char status;
+
+  fn_cmd[0] = FUJICMD_GET_WIFISTATUS;
+
+  r = _send_cmd_and_recv_buf(1, &status);
+  if (r) {
+    if (status == 3)     // status of 3 is connected, 6 is disconnected
+      return(1);
+    else
+      return(0);
+  }
+
+  return(0);    // something went wrong, return not connected
+}
+
+
+unsigned char fujinet_scan_networks(void)
+{
+  unsigned char r;
+  unsigned char num;
+
+  fn_cmd[0] = FUJICMD_SCAN_NETWORKS;
+
+  r = _send_cmd_and_recv_buf(1, &num);
+  if (r)
+    return(num);
+
+  return(0);    // something went wrong no networks
+}
+
+
+unsigned char fujinet_scan_results(unsigned char n)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_GET_SCAN_RESULT;
+  fn_cmd[1] = n;
+
+  r = _send_cmd_and_recv_buf(2, (unsigned char *) &wifi);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong no networks
+}
+
+
+unsigned char fujinet_get_adapter_config(void)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_GET_ADAPTERCONFIG;
+
+  r = _send_cmd_and_recv_buf(1, (unsigned char *) &fncfg);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_get_ssid(void)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_GET_SSID;
+
+  r = _send_cmd_and_recv_buf(1, (unsigned char *) &ssid_pass);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_set_ssid(char *ssid, char *password)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_SET_SSID;
+
+  memcpy(((FN_SSID_PASS *) &fn_cmd[1])->ssid, ssid, MAX_SSID_LEN+1);
+  memcpy(((FN_SSID_PASS *) &fn_cmd[1])->password, password, MAX_WIFI_PASS_LEN);
+
+  r = _send_cmd(sizeof(FN_SSID_PASS)+1);      // send cmd + FN_SSID_PASS
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_read_host_slots(void)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_READ_HOST_SLOTS;
+
+  r = _send_cmd_and_recv_buf(1, (unsigned char *) &host_slots);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_write_host_slots(unsigned char *host_slots)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_WRITE_HOST_SLOTS;
+  memcpy(&fn_cmd[1], host_slots, MAX_HOSTS*MAX_HOSTNAME_LEN);
+
+  r = _send_cmd((MAX_HOSTS*MAX_HOSTNAME_LEN)+1);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_mount_host(unsigned char host)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_MOUNT_HOST;
+  fn_cmd[1] = host;
+
+  r = _send_cmd(2);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_unmount_host(unsigned char host)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_UNMOUNT_HOST;
+  fn_cmd[1] = host;
+
+  r = _send_cmd(2);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_open_directory(unsigned char host_slot, char *dirpath)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_OPEN_DIRECTORY;
+  fn_cmd[1] = host_slot;
+  strcpy(&fn_cmd[2], dirpath);
+
+  r = _send_cmd(strlen(dirpath)+3);         // two command bytes + strlen + null
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_close_directory(void)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_CLOSE_DIRECTORY;
+
+  r = _send_cmd(1);
+  if (r)
+    return 1;
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_get_directory_position(unsigned int *pos)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_GET_DIRECTORY_POSITION;
+
+  r = _send_cmd_and_recv_buf(1, (unsigned char *) pos);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_set_directory_position(unsigned int pos)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_SET_DIRECTORY_POSITION;
+  fn_cmd[1] = pos & 0xFF;
+  fn_cmd[2] = pos >> 8;
+
+  r = _send_cmd(3);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_read_directory_entry(unsigned char maxlen, char *dir_entry)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_READ_DIR_ENTRY;
+  fn_cmd[1] = maxlen;
+  fn_cmd[2] = 0;			            // additional directory info (0x80 for true)
+
+  memset(dir_entry, 0, maxlen);		// clear entry buffer
+
+  r = _send_cmd_and_recv_buf(3, (unsigned char *) dir_entry);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
