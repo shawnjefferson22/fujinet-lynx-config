@@ -145,6 +145,6 @@ unsigned char fujinet_close_directory(void);
 unsigned char fujinet_get_directory_position(unsigned int *pos);
 unsigned char fujinet_set_directory_position(unsigned int pos);
 unsigned char fujinet_read_directory_entry(unsigned char maxlen, char *dir_entry);
-
+unsigned char fujinet_set_device_filename(unsigned char ds, char *filename);
 
 #endif /* FUJINET_H */

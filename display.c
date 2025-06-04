@@ -147,3 +147,12 @@ void display_files(unsigned char sel)
   return;
 }
 
+
+void scroll_file_entry(unsigned char sel, unsigned char st)
+{
+  tgi_setbgcolor(TGI_COLOR_GREEN);
+  sprintf(s, "%-19.19s", &filenames[sel][st]);
+  tgi_outtextxy(4, (sel*8)+8, s);
+  tgi_setbgcolor(TGI_COLOR_BLACK);
+  return;
+}

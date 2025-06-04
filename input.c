@@ -88,7 +88,7 @@ unsigned char check_joy_and_keys(unsigned char *joy)
   unsigned char c;
 
 
-  while (1) {
+  //while (1) {
 	  // keys input
     if (kbhit()) {
       c = cgetc();
@@ -101,7 +101,7 @@ unsigned char check_joy_and_keys(unsigned char *joy)
       while (joy_read(0) == *joy);     // debounce joystick
       return(0);
     }
-  }
+  //}
 }
 
 
@@ -142,7 +142,10 @@ uint8_t get_input(uint8_t x, uint8_t y, uint8_t max, char *input)
     tgi_bar((i*8)+x, y+7, (i*8)+8+x, y+8);	// draw underline cursor
     tgi_setcolor(TGI_COLOR_WHITE);
 
-    c = check_joy_and_keys(&joy);
+    do {
+      c = check_joy_and_keys(&joy);
+    } while (!c && !joy);
+
     switch(c) {
       case '1':                         // delete char
         _remove_char(&input[0], i);

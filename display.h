@@ -22,6 +22,7 @@ void print_error(char *msg);
 void display_adapter_config(void);
 void display_hosts(unsigned char sel);
 void display_files(unsigned char sel);
+void scroll_file_entry(unsigned char sel, unsigned char st);
 
 
 #endif

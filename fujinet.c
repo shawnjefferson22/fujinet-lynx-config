@@ -302,3 +302,19 @@ unsigned char fujinet_read_directory_entry(unsigned char maxlen, char *dir_entry
 
   return(0);    // something went wrong
 }
+
+
+unsigned char fujinet_set_device_filename(unsigned char ds, char *filename)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_SET_DEVICE_FULLPATH;
+  fn_cmd[1] = ds;
+  strcpy(&fn_cmd[2], filename);
+
+  r = _send_cmd(strlen(filename)+3);    // two bytes, plus string, plus null
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}

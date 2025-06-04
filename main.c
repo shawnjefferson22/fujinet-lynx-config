@@ -18,11 +18,13 @@
 
 
 #define uint8_t   unsigned char
+#define SCROLL_DELAY  5000
 
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
 unsigned char sel_host;         // store sel_host for directory display
-char dirpath[256];          	// directory path to pass to open directory
+char dirpath[256];          	  // directory path to pass to open directory
+char filename[256];             // filename buffer
 unsigned char dir_last_page;    // last directory page?
 
 
@@ -78,7 +80,10 @@ RESCAN:
       tgi_setbgcolor(TGI_COLOR_BLACK);
     }
 
-    r = check_joy_and_keys(&joy);
+    do {
+      r = check_joy_and_keys(&joy);
+    } while (!r && !joy);
+
     if (r == '2') {						// Opt2 exits
 	  return(0);
     }
@@ -200,9 +205,10 @@ REDRAW:
   while (1) {
     display_hosts(sel);
 
-    //joy = joy_read(0);
-    //while (joy_read(0) == joy);       // debounce
-    r = check_joy_and_keys(&joy);
+    do {
+      r = check_joy_and_keys(&joy);
+    } while (!r && !joy);
+
     if (r) {
       switch(r) {
         case '1':
@@ -267,7 +273,7 @@ void get_files(void)
   memset(&filenames, 0, sizeof(filenames));		// clear filenames array
 
   for(i=0; i<10; ++i) {
-    r = fujinet_read_directory_entry(21, &filenames[i][0]);
+    r = fujinet_read_directory_entry(60, &filenames[i][0]);
     if (!r) {									               // error reading dir entry
       filenames[i][0] = '\0';					       // clear entry
       return;
@@ -343,7 +349,8 @@ void strip_dir_from_path(void)
 
 void select_files(void)
 {
-  unsigned char r;
+  unsigned char r, st;
+  unsigned int delay;
   unsigned char joy, sel;
   unsigned int dirpos;
   char entry[128];
@@ -361,13 +368,25 @@ REDRAW:
 
   // input loop
   while(1) {
+    st = delay = 0;                       // reset start of entry
     display_files(sel);
 
-    //joy = joy_read(0);
-    //while (joy_read(0) == joy);       	  // debounce
-
     // Process joystick and keys
-    r = check_joy_and_keys(&joy);
+    do {
+      r = check_joy_and_keys(&joy);
+      
+      if ((delay == SCROLL_DELAY) && (strlen(filenames[sel]) > 19)) {
+        st++;
+        if (st > (strlen(filenames[sel])-19))
+          st = 0;
+        
+        scroll_file_entry(sel, st);
+        delay = 0;
+      }
+      
+      delay++;
+    } while (!r && !joy);
+
     if (r) {
       switch(r) {
         case '1':
@@ -434,39 +453,49 @@ REDRAW:
     }
     // B button exits file selection, bach to host selection
     if (JOY_BTN_2(joy)) {
-	    fujinet_close_directory();		  	  // close the directory before we try another host (ignore return value)
+	    fujinet_close_directory();		  	      // close the directory before we try another host (ignore return value)
         fujinet_unmount_host(sel_host);       // unmount host (ignore return value)
         return;                               // exit to host select
     }
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
+      r = read_full_dir_entry(dirpos+sel, &entry[0]);  
+      if (!r) {
+        print_error("Error getting entry!");
+        wait_for_button();
+        continue;
+      }
       // Handle directory
-      if (filenames[sel][strlen(filenames[sel])-1] == '/') {
-        r = read_full_dir_entry(dirpos+sel, &entry[0]);
-        if (r) {
-          strcat(dirpath, entry);			  // add this dir to dirpath
-          open_dir();                         // open the dir
-          get_files();					      // get new directory entries
-          sel = 0;                            // set selected at zero
-          continue;                           // skip to top of loop
-        }
+      if (entry[strlen(entry)-1] == '/') {
+        strcat(dirpath, entry);			  // add this dir to dirpath
+        open_dir();                   // open the dir
+        get_files();					        // get new directory entries
+        sel = 0;                      // set selected at zero
+        continue;                     // skip to top of loop
       }
 
       // Handle link
-      if (filenames[sel][0] == '+') {
-        r = read_full_dir_entry(dirpos+sel, &entry[0]);
-        if (r) {
-          strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						// copy link to last host slot
-          r = fujinet_write_host_slots((unsigned char *) host_slots);		// write the host slots
-          if (!r) {
-            print_error("Error writing slots!");
-            wait_for_button();
-          }
-          return;                             // exit to host select
+      if (entry[0] == '+') {
+        strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						        // copy link to last host slot
+        r = fujinet_write_host_slots((unsigned char *) host_slots);		// write the host slots
+        if (!r) {
+          print_error("Error writing slots!");
+          wait_for_button();
         }
+        return;                             // exit to host select
       }
-    }
+
+      // Handle file
+      strcpy(filename, dirpath);
+      strcat(filename, entry);
+      r = fujinet_set_device_filename(0, &filename[0]);
+      if (!r) {
+        print_error("Error setting device!");
+        wait_for_button();
+      }
+    }  
   }
+
 }
 
 
