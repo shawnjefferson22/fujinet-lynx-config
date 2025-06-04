@@ -349,7 +349,7 @@ void strip_dir_from_path(void)
 
 void select_files(void)
 {
-  unsigned char r, st;
+  unsigned char r, st, scrdir;
   unsigned int delay;
   unsigned char joy, sel;
   unsigned int dirpos;
@@ -368,17 +368,24 @@ REDRAW:
 
   // input loop
   while(1) {
-    st = delay = 0;                       // reset start of entry
+    st = scrdir = delay = 0;                       // reset start of entry, dir of scroll, delay
     display_files(sel);
 
     // Process joystick and keys
     do {
       r = check_joy_and_keys(&joy);
       
+      // Need to scroll this entry?
       if ((delay == SCROLL_DELAY) && (strlen(filenames[sel]) > 19)) {
-        st++;
-        if (st > (strlen(filenames[sel])-19))
-          st = 0;
+        if (scrdir)
+          st--;       // backward
+        else
+          st++;       // forward
+
+        if (st > (strlen(filenames[sel])-20))
+          scrdir = 1;                                   // reverse scroll dir
+        else if (st == 0)
+          scrdir = 0;                                   // forward direction
         
         scroll_file_entry(sel, st);
         delay = 0;
