@@ -2,7 +2,7 @@
  *  for Atari Lynx
  *
  * @brief I/O routines
- * @author Thom Cherryhomes
+ * @author Thom Cherryhomes, Shawn Jefferson
  * @email thom dot cherryhomes at gmail dot com
  */
 
@@ -25,7 +25,7 @@ unsigned char fn_cmd[512];   // Fujinet command to send + aux bytes (might need 
 unsigned short fn_len;       // length of data returned
 
 unsigned char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
-
+FN_DISK_SLOT disk_slots[MAX_DISK_SLOTS];
 FN_ADAPTER_CONFIG fncfg;
 FN_SSID_DETAIL wifi;
 FN_SSID_PASS ssid_pass;
@@ -286,15 +286,15 @@ unsigned char fujinet_set_directory_position(unsigned int pos)
 }
 
 
-unsigned char fujinet_read_directory_entry(unsigned char maxlen, char *dir_entry)
+unsigned char fujinet_read_directory_entry(unsigned char maxlen, unsigned char extra, char *dir_entry)
 {
   unsigned char r;
 
   fn_cmd[0] = FUJICMD_READ_DIR_ENTRY;
   fn_cmd[1] = maxlen;
-  fn_cmd[2] = 0;			            // additional directory info (0x80 for true)
+  fn_cmd[2] = extra;			         // additional directory info (0x80 for true)
 
-  memset(dir_entry, 0, maxlen);		// clear entry buffer
+  memset(dir_entry, 0, maxlen);		 // clear entry buffer
 
   r = _send_cmd_and_recv_buf(3, (unsigned char *) dir_entry);
   if (r)
@@ -317,4 +317,63 @@ unsigned char fujinet_set_device_filename(unsigned char ds, char *filename)
     return(1);
 
   return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_mount_image(unsigned char ds, unsigned char options)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_MOUNT_IMAGE;
+  fn_cmd[1] = ds;
+  fn_cmd[2] = options;
+
+  r = _send_cmd(3);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_mount_all(void)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_MOUNT_ALL;
+  
+  r = _send_cmd(1);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_read_device_slots(FN_DISK_SLOT slots[MAX_DISK_SLOTS])
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_READ_DEVICE_SLOTS;
+
+  r = _send_cmd_and_recv_buf(1, (unsigned char *) slots);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong 
+}
+
+
+unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots[MAX_DISK_SLOTS])
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_WRITE_DEVICE_SLOTS;
+  memcpy(&fn_cmd[1], slots, sizeof(slots));
+
+  r = _send_cmd((sizeof(FN_DISK_SLOT)*MAX_DISK_SLOTS)+1);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong 
 }

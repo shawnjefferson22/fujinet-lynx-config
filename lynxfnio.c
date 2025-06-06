@@ -48,6 +48,40 @@ unsigned char fnio_done(void)
 }
 
 
+// send a reset packet, no payload
+void fnio_reset(unsigned char dev)
+{
+   // Send the reset command, no response is given
+  ser_put(MN_RESET | dev);
+  ser_get(&_r);     // get reflection
+}
+
+
+// send status packet, no payload
+unsigned char fnio_status(unsigned char dev, unsigned char *buf)
+{
+  unsigned char i;
+  
+
+  // Send the status command, a response will be sent
+  ser_put(MN_STATUS | dev);
+  ser_get(&_r);      // get reflection
+
+  // get response
+  for (i=0; i<6; ++i) {
+    _serial_get_loop();
+    buf[i] = _r;
+  }
+  
+  // checksum matches?
+  _checksum((unsigned char *) &buf[1], 4);
+  if (_ck == buf[5])
+    return(1);                      // return success
+  else
+    return(0);                      // return failure
+}
+
+
 /**
  * @brief calculates the checksum on the packet and stores in global var
  * @param *b pointer to buffer

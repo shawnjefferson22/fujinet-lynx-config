@@ -10,6 +10,7 @@
 #include "display.h"
 #include "input.h"
 #include "fujinet.h"
+#include "fujidisk.h"
 
 
 char s[21];                     // buffer for text display
@@ -155,4 +156,21 @@ void scroll_file_entry(unsigned char sel, unsigned char st)
   tgi_outtextxy(4, (sel*8)+8, s);
   tgi_setbgcolor(TGI_COLOR_BLACK);
   return;
+}
+
+
+void display_file_data(void)
+{
+  unsigned char i, j;
+
+  for (j=0; j<16; ++j) {
+    sprintf(s, "%02X:", j);
+    tgi_outtextxy(2, j*8, s);
+    for(i=0; i<16; ++i) {
+      sprintf(s, "%02X", dskbuf[(j*16)+i]);
+      tgi_outtext(s);
+    }
+  }
+
+  wait_for_button();
 }

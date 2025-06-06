@@ -92,6 +92,16 @@
 #define MAX_HOSTNAME_LEN	32
 #define DIRPATH_LEN			256
 
+// disk image access mode
+#define DISK_ACCESS_MODE_READ 1
+#define DISK_ACCESS_MODE_WRITE 2
+#define DISK_ACCESS_MODE_FETCH 128
+
+// device slot defines
+#define MAX_DISPLAY_FILENAME_LEN    36
+#define MAX_DISK_SLOTS              8
+
+
 // Data structs
 typedef struct
 {
@@ -118,12 +128,19 @@ typedef struct
     char password[MAX_WIFI_PASS_LEN];
 } FN_SSID_PASS;
 
+typedef struct
+{
+    unsigned char hostSlot;
+    unsigned char mode;
+    char filename[MAX_DISPLAY_FILENAME_LEN];
+} FN_DISK_SLOT;
+
 // Static data structures
 extern FN_SSID_DETAIL wifi;
 extern FN_ADAPTER_CONFIG fncfg;
 extern FN_SSID_PASS ssid_pass;
 extern unsigned char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
-
+extern FN_DISK_SLOT disk_slots[MAX_DISK_SLOTS];
 
 // helper functions
 unsigned char _send_cmd(unsigned int l);
@@ -144,7 +161,11 @@ unsigned char fujinet_open_directory(unsigned char host_slot, char *dirpath);
 unsigned char fujinet_close_directory(void);
 unsigned char fujinet_get_directory_position(unsigned int *pos);
 unsigned char fujinet_set_directory_position(unsigned int pos);
-unsigned char fujinet_read_directory_entry(unsigned char maxlen, char *dir_entry);
+unsigned char fujinet_read_directory_entry(unsigned char maxlen, unsigned char extra, char *dir_entry);
 unsigned char fujinet_set_device_filename(unsigned char ds, char *filename);
+unsigned char fujinet_mount_image(unsigned char ds, unsigned char options);
+unsigned char fujinet_mount_all(void);
+unsigned char fujinet_read_device_slots(FN_DISK_SLOT slots[MAX_DISK_SLOTS]);
+unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots[MAX_DISK_SLOTS]);
 
 #endif /* FUJINET_H */

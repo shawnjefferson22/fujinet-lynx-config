@@ -13,6 +13,7 @@
 #include <joystick.h>
 #include "display.h"
 #include "fujinet.h"
+#include "fujidisk.h"
 #include "input.h"
 #include "lynxfnio.h"
 
@@ -273,7 +274,7 @@ void get_files(void)
   memset(&filenames, 0, sizeof(filenames));		// clear filenames array
 
   for(i=0; i<10; ++i) {
-    r = fujinet_read_directory_entry(60, &filenames[i][0]);
+    r = fujinet_read_directory_entry(60, 0, &filenames[i][0]);
     if (!r) {									               // error reading dir entry
       filenames[i][0] = '\0';					       // clear entry
       return;
@@ -321,7 +322,7 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
     return(0);
   }
 
-  r = fujinet_read_directory_entry(128, (unsigned char *) entry);  // read full directory name
+  r = fujinet_read_directory_entry(128, 0, (unsigned char *) entry);  // read full directory name
   if (!r) {
     print_error("Error reading dir!");
     wait_for_button();
@@ -500,6 +501,15 @@ REDRAW:
         print_error("Error setting device!");
         wait_for_button();
       }
+      
+      // Need to set hostSlot on device
+      r = fujinet_mount_all();
+      r = fujinet_read_device_slots(disk_slots);
+      disk_slots[0].hostSlot = sel_host;
+      r = fujinet_write_device_slots(&disk_slots);
+
+      r = fujidisk_get_file(0, dirpos+sel);
+      display_file_data();    
     }  
   }
 
@@ -509,7 +519,7 @@ REDRAW:
 void main(void)
 {
   unsigned char r, j;
-
+  
 
   // Setup TGI
   tgi_install(tgi_static_stddrv);
@@ -525,7 +535,7 @@ void main(void)
   tgi_setcolor(TGI_COLOR_WHITE);
   tgi_clear();
 
-
+  
   // Splash screen here
                       //012345678901234567890
   //tgi_outtextxy(1, 8, "FujiNet Config v0.1");

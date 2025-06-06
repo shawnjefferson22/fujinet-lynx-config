@@ -24,5 +24,6 @@ void display_hosts(unsigned char sel);
 void display_files(unsigned char sel);
 void scroll_file_entry(unsigned char sel, unsigned char st);
 
+void display_file_data(void);
 
 #endif

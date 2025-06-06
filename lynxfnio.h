@@ -9,12 +9,15 @@
 #ifndef LYNXFNIO_H
 #define LYNXFNIO_H
 
-
+// Devices
+#define DISK_DEV    0x04            // disk device
 #define NET_DEV 	0x09			// network device
 #define FN_DEV		0x0F			// Fujinet device
 
+// Max message size
 #define LEN_MAX		1024
 
+// Control codes
 #define MN_RESET 	0x00   			// command.control (reset)
 #define MN_STATUS 	0x10  			// command.control (status)
 #define MN_ACK 		0x20     		// command.control (ack)
@@ -33,11 +36,33 @@
 
 #define NET_ACK		(NM_ACK & NET_DEV)
 #define NET_NACK	(NM_NACK & NET_DEV)
+#define DISK_ACK    (NM_ACK & DISK_DEV)
+#define DISK_NACK   (NM_ACK & DISK_DEV)
+
+// device type
+#define DEVTYPE_CHAR     0
+#define DEVTYPE_BLOCK    1
+
+// Status codes
+#define STATUS_OK        0
+#define STATUS_BAD_BLOCK 1
+#define STATUS_NO_BLOCK  2
+#define STATUS_NO_MEDIA  3
+#define STATUS_NO_DRIVE  4
+
+
+// structs
+typedef struct {
+  unsigned char dev_stat;
+  unsigned short max_msgsize;
+  unsigned char type;
+  unsigned char status;
+  unsigned char ck;
+} FUJI_IO_STATUS;
 
 
 // Some globals to help with code size/speed (could be moved to zero page)
 extern unsigned char _ck;			// checksum byte
-//extern char _data;					// data from serial
 extern unsigned char _r;			// response/data from FN
 
 
@@ -48,6 +73,8 @@ void _serial_get_loop(void);
 
 unsigned char fnio_init(void);
 unsigned char fnio_done(void);
+void fnio_reset(unsigned char dev);
+unsigned char fnio_status(unsigned char dev, unsigned char *buf);
 unsigned char fnio_send(unsigned char dev, unsigned char *buf, unsigned short len);
 unsigned char fnio_recv(unsigned char dev, unsigned char *buf, unsigned short *len);
 
