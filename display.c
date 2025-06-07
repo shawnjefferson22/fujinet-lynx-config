@@ -13,6 +13,10 @@
 #include "fujidisk.h"
 
 
+#define KEY_LINE	95
+#define ERROR_LINE  95
+
+
 char s[21];                     // buffer for text display
 char filenames[10][64];         // filename display (704 bytes), filenames capped to 64 bytes
 
@@ -49,8 +53,6 @@ void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t 
  */
 void print_key_legend(char *legend)
 {
-  #define KEY_LINE	95
-
   tgi_setcolor(TGI_COLOR_BLACK);
   tgi_bar(0, KEY_LINE, 0, KEY_LINE+8);
   tgi_setcolor(TGI_COLOR_WHITE);
@@ -64,13 +66,24 @@ void print_key_legend(char *legend)
  */
 void print_error(char *msg)
 {
-  #define ERROR_LINE  95
-
   tgi_setcolor(TGI_COLOR_BLACK);
   tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
   tgi_setcolor(TGI_COLOR_RED);
   tgi_outtextxy(1, ERROR_LINE, msg);
   tgi_setcolor(TGI_COLOR_WHITE);
+}
+
+
+/* display_error_and_wait
+ *
+ * Display the error message and wait for button
+ * and then clear the error line.
+ */
+void display_error_and_wait(char *msg)
+{
+  print_error(msg);
+  wait_for_button();
+  tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
 }
 
 
@@ -107,7 +120,7 @@ void display_adapter_config(void)
     tgi_outtextxy(2, 75, s);
   }
 
-  check_joy_and_keys(&r);           // something was pressed  
+  check_joy_and_keys(&r);           // something was pressed
 }
 
 
@@ -159,16 +172,18 @@ void scroll_file_entry(unsigned char sel, unsigned char st)
 }
 
 
+// display data of dksbuf in hex
+// for troubleshooting/debug
 void display_file_data(void)
 {
   unsigned char i, j;
 
   for (j=0; j<16; ++j) {
-    sprintf(s, "%02X:", j);
-    tgi_outtextxy(2, j*8, s);
+    //sprintf(s, "%02X:", j);
+    //tgi_outtextxy(2, j*8, s);
     for(i=0; i<16; ++i) {
       sprintf(s, "%02X", dskbuf[(j*16)+i]);
-      tgi_outtext(s);
+      tgi_outtextxy(0, j*8, s);
     }
   }
 

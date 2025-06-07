@@ -17,6 +17,6 @@ void fujidisk_reset(void);
 unsigned char fujidisk_status(void);
 unsigned char fujidisk_set_block(unsigned long block);
 unsigned char fujidisk_recv_block(void);
-unsigned char fujidisk_get_file(unsigned char disk_slot, unsigned char dirpos);
+
 
 #endif

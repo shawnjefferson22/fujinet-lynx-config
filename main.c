@@ -1,9 +1,10 @@
 /**
- * Lynx Fujinet Debugger interface
+ * Lynx Fujinet Config
  */
 
 #include <6502.h>
 #include <lynx.h>
+#include <conio.h>
 #include <tgi.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,16 +19,14 @@
 #include "lynxfnio.h"
 
 
-#define uint8_t   unsigned char
-#define SCROLL_DELAY  5000
+#define SCROLL_DELAY  4000		// delay speed for directory entry scrolling
 
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
 unsigned char sel_host;         // store sel_host for directory display
-char dirpath[256];          	  // directory path to pass to open directory
+char dirpath[256];          	// directory path to pass to open directory
 char filename[256];             // filename buffer
 unsigned char dir_last_page;    // last directory page?
-
 
 
 
@@ -133,15 +132,11 @@ RESCAN:
     tgi_setcolor(TGI_COLOR_BLACK);
     tgi_bar(0, 16, 159, 101);
     tgi_setcolor(TGI_COLOR_WHITE);
-                       //012345678901234567890
     tgi_outtextxy(1, 9, "Connecting...");
 
     r = fujinet_set_ssid(ssid_pass.ssid, ssid_pass.password);
     if (!r) {
-      tgi_setcolor(TGI_COLOR_RED);
-      tgi_outtextxy(1, 9, "Error connecting!");
-      tgi_setcolor(TGI_COLOR_WHITE);
-      wait_for_button();
+	  display_error_and_wait("Error connecting!");
       goto RESCAN;
     }
 
@@ -155,12 +150,8 @@ RESCAN:
 
     // Error connecting
     if (!r) {
-      tgi_setcolor(TGI_COLOR_RED);
-                         //012345678901234567890
-      tgi_outtextxy(1, 9, "Error connecting!");
-      wait_for_button();
-
-     goto RESCAN;      			// should we just exit out? Bad Shawn using gotos!
+	  display_error_and_wait("Error connecting!");
+      goto RESCAN;      			// should we just exit out? Bad Shawn using gotos!
     }
   }
   else
@@ -181,9 +172,7 @@ unsigned char read_hosts(void)
     if (r) break;
   }
   if (!r) {
-               //012345678901234567890
-    print_error("Error reading hosts!");
-    wait_for_button();
+    display_error_and_wait("Error reading hosts!");
     return(0);
   }
 
@@ -236,9 +225,7 @@ REDRAW:
         sel_host = sel;
 	    r = fujinet_mount_host(sel_host);			// mount host
 	    if (!r) {							        // error mounting
-                   //012345678901234567890
-          print_error("Error mounting host!");
-          wait_for_button();
+          display_error_and_wait("Error mounting host!");
 	      continue;
         }
         return(1);                          			// exit out to display directories
@@ -246,20 +233,17 @@ REDRAW:
     }
     if (JOY_BTN_2(joy)) {
       strcpy(newhost, host_slots[sel]);
-	    r = get_input(4, (sel*8)+8, MAX_HOSTNAME_LEN, &newhost[0]);
-	    if (r) {
-	      strcpy(host_slots[sel], newhost);
-	      r = fujinet_write_host_slots((unsigned char *) &host_slots);
-	      if (!r) {
-                     //012345678901234567890
-          print_error("Error writing hosts!");
-          wait_for_button();
+	  r = get_input(4, (sel*8)+8, MAX_HOSTNAME_LEN, &newhost[0]);
+	  if (r) {
+	    strcpy(host_slots[sel], newhost);
+	    r = fujinet_write_host_slots((unsigned char *) &host_slots);
+	    if (!r) {
+          display_error_and_wait("Error writing hosts!");
 	      return(0);
         }
       }
     }
   }
-
 
   return(0);
 }
@@ -295,16 +279,14 @@ void open_dir(void)
   r = fujinet_close_directory();                    // close the directory just in case it's open
   r = fujinet_open_directory(sel_host, dirpath);    // open new directory
   if (!r) {
-    print_error("Error opening dir!");
-    wait_for_button();
+    display_error_and_wait("Error opening dir!");
     return;
   }
 
   // Set directory position to zero
   r = fujinet_set_directory_position(0);
   if (!r) {
-    print_error("Error set dir pos!");
-    wait_for_button();
+    display_error_and_wait("Error set dir pos!");
     return;
   }
 }
@@ -317,15 +299,13 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
 
   r = fujinet_set_directory_position(pos);		// set directory position to entry
   if (!r) {
-    print_error("Error set dir pos!");
-    wait_for_button();
+    display_error_and_wait("Error set dir pos!");
     return(0);
   }
 
   r = fujinet_read_directory_entry(128, 0, (unsigned char *) entry);  // read full directory name
   if (!r) {
-    print_error("Error reading dir!");
-    wait_for_button();
+    display_error_and_wait("Error reading dir!");
     return(0);
   }
 
@@ -345,6 +325,76 @@ void strip_dir_from_path(void)
     }
 
   strcpy(dirpath, "/");       // either no directory or at root
+}
+
+
+// Get the file, display progress
+unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
+{
+  unsigned char r;
+  unsigned long size;
+  unsigned int i, blocks;
+
+
+  // get the size of the file
+  r = fujinet_set_directory_position(dirpos);					// set directory position to entry
+  if (!r) {
+    display_error_and_wait("Error set dir pos!");
+    return(0);
+  }
+
+  r = fujinet_read_directory_entry(128, 0x80, &dskbuf[0]);		// get dir entry with extra info
+  if (!r) {
+    display_error_and_wait("Error reading entry!");
+    return(0);
+  }
+  size = dskbuf[6];												// extract the size
+  size += (unsigned long) dskbuf[7] << 8;
+  size += (unsigned long) dskbuf[8] << 16;
+  size += (unsigned long) dskbuf[9] << 24;
+
+  // calculate blocks to download
+  blocks = size / 256;
+  if (size % 256)
+    blocks++;
+
+  // mount the disk image in device slot
+  r = fujinet_mount_image(disk_slot, DISK_ACCESS_MODE_READ);
+  if (!r) {
+    display_error_and_wait("Error mounting image!");
+    return(0);
+  }
+
+  draw_box_with_text(4, 8, 155, 40, TGI_COLOR_RED, "Downloading", "Option1=Cancel");
+
+  // Get all the blocks
+  for(i=0; i<blocks; ++i) {
+    sprintf(s, "Block %i of %i", i+1, blocks);
+    tgi_outtextxy(6, 16, s);
+    r = fujidisk_set_block(i);
+    if (!r) {
+	  display_error_and_wait("Error setting block!");
+	  return(0);
+    }
+    r = fujidisk_recv_block();
+    if (!r) {
+	  display_error_and_wait("Error during receive!");
+	  return(0);
+    }
+
+    // User cancel?
+    if (kbhit()) {
+      r = cgetc();
+      while (cgetc() == r);			// debouce key
+      if (r == '1')
+        return(0);
+    }
+
+    // do something with the dksbuf here
+
+  }
+
+  return(1);
 }
 
 
@@ -375,7 +425,7 @@ REDRAW:
     // Process joystick and keys
     do {
       r = check_joy_and_keys(&joy);
-      
+
       // Need to scroll this entry?
       if ((delay == SCROLL_DELAY) && (strlen(filenames[sel]) > 19)) {
         if (scrdir)
@@ -387,11 +437,11 @@ REDRAW:
           scrdir = 1;                                   // reverse scroll dir
         else if (st == 0)
           scrdir = 0;                                   // forward direction
-        
+
         scroll_file_entry(sel, st);
         delay = 0;
       }
-      
+
       delay++;
     } while (!r && !joy);
 
@@ -402,8 +452,8 @@ REDRAW:
           goto REDRAW;
           break;
         case '2':
-		      r = select_wifi_network();
-		      return;							// return to hosts selection
+		  r = select_wifi_network();
+		  return;							// return to hosts selection
       }
     }
 
@@ -430,12 +480,11 @@ REDRAW:
       // go back previous page?
       if (dirpos > 9) {
         dirpos -= 10;                       // get previous page of entries
-		    r = fujinet_set_directory_position(dirpos);
-		    if (!r) {
-    	    print_error("Error set dir pos!");
-          wait_for_button();
+		r = fujinet_set_directory_position(dirpos);
+		if (!r) {
+    	  display_error_and_wait("Error set dir pos!");
           return;
-	      }
+	    }
 
         get_files();			// get more directory entries
         sel = 0;                // set selected at zero
@@ -467,10 +516,9 @@ REDRAW:
     }
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
-      r = read_full_dir_entry(dirpos+sel, &entry[0]);  
+      r = read_full_dir_entry(dirpos+sel, &entry[0]);
       if (!r) {
-        print_error("Error getting entry!");
-        wait_for_button();
+        display_error_and_wait("Error getting entry!");
         continue;
       }
       // Handle directory
@@ -484,11 +532,10 @@ REDRAW:
 
       // Handle link
       if (entry[0] == '+') {
-        strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						        // copy link to last host slot
+        strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						// copy link to last host slot
         r = fujinet_write_host_slots((unsigned char *) host_slots);		// write the host slots
         if (!r) {
-          print_error("Error writing slots!");
-          wait_for_button();
+          display_error_and_wait("Error writing slots!");
         }
         return;                             // exit to host select
       }
@@ -498,19 +545,36 @@ REDRAW:
       strcat(filename, entry);
       r = fujinet_set_device_filename(0, &filename[0]);
       if (!r) {
-        print_error("Error setting device!");
-        wait_for_button();
+        display_error_and_wait("Error setting device!");
+        continue;
       }
-      
-      // Need to set hostSlot on device
+
+      // Need to mount all devices, and set hostSlot on device
       r = fujinet_mount_all();
+      if (!r) {
+	    display_error_and_wait("Error mounting all!");
+	    continue;
+      }
+
+      // read all the device slots, set the hostslot and then write back
+      // this is the only way to do this currently with FN
       r = fujinet_read_device_slots(disk_slots);
+      if (!r) {
+		display_error_and_wait("Error read disk slots!");
+		continue;
+      }
       disk_slots[0].hostSlot = sel_host;
       r = fujinet_write_device_slots(&disk_slots);
+      if (!r) {
+		display_error_and_wait("Error write disk slots!");
+		continue;
+      }
 
-      r = fujidisk_get_file(0, dirpos+sel);
-      display_file_data();    
-    }  
+      r = get_file(0, dirpos+sel);
+      if (!r)
+	    continue;
+      display_file_data();
+    }
   }
 
 }
@@ -519,7 +583,7 @@ REDRAW:
 void main(void)
 {
   unsigned char r, j;
-  
+
 
   // Setup TGI
   tgi_install(tgi_static_stddrv);
@@ -535,7 +599,7 @@ void main(void)
   tgi_setcolor(TGI_COLOR_WHITE);
   tgi_clear();
 
-  
+
   // Splash screen here
                       //012345678901234567890
   //tgi_outtextxy(1, 8, "FujiNet Config v0.1");

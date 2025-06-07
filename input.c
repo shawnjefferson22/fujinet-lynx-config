@@ -15,6 +15,7 @@
 char input_chars[] = {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,!@#$%^&*()[]<>/?:; _"};
 
 
+// Finds the passed in character in the input_char array and returns the index, or 0
 unsigned char _find_char(unsigned char c)
 {
   unsigned char i;
@@ -28,6 +29,7 @@ unsigned char _find_char(unsigned char c)
 }
 
 
+// removes a character from the string at position i
 void _remove_char(unsigned char *s, unsigned char i)
 {
   unsigned char n;
@@ -69,7 +71,7 @@ void wait_for_button(void)
 
 /* check_joy_and_keys
  *
- * Joystick and key checking loop, doing debounce for joystick
+ * Joystick and key check, doing debounce for joystick and keys
  *
  * Returns the keypressed, or 0 if no key pressed, and status of joystick in joy.
  * Check if a key is pressed on the lynx and if so, return the key char.
@@ -88,20 +90,19 @@ unsigned char check_joy_and_keys(unsigned char *joy)
   unsigned char c;
 
 
-  //while (1) {
-	  // keys input
-    if (kbhit()) {
-      c = cgetc();
-      return(c);
-    }
+  // keys input
+  if (kbhit()) {
+    c = cgetc();
+    while (kbhit());					// debouce key
+    return(c);
+  }
 
-    // joystick input
-    *joy = joy_read(0);
-    if (*joy) {
-      while (joy_read(0) == *joy);     // debounce joystick
-      return(0);
-    }
-  //}
+  // joystick input
+  *joy = joy_read(0);
+  if (*joy) {
+    while (joy_read(0) == *joy);     // debounce joystick
+    return(0);
+  }
 }
 
 
@@ -149,7 +150,7 @@ uint8_t get_input(uint8_t x, uint8_t y, uint8_t max, char *input)
     switch(c) {
       case '1':                         // delete char
         _remove_char(&input[0], i);
-        i--; 
+        i--;
         continue;
       case '2':                         // insert char
         _insert_char(&input[0], i);
