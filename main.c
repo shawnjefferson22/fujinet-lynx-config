@@ -365,27 +365,27 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     return(0);
   }
 
-  draw_box_with_text(4, 8, 155, 40, TGI_COLOR_RED, "Downloading", "Option1=Cancel");
+  draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "Option1=Cancel");
 
   // Get all the blocks
   for(i=0; i<blocks; ++i) {
     sprintf(s, "Block %i of %i", i+1, blocks);
-    tgi_outtextxy(6, 16, s);
+    tgi_outtextxy(6, 18, s);
     r = fujidisk_set_block(i);
     if (!r) {
-	  display_error_and_wait("Error setting block!");
-	  return(0);
+	    display_error_and_wait("Error setting block!");
+	    return(0);
     }
     r = fujidisk_recv_block();
     if (!r) {
-	  display_error_and_wait("Error during receive!");
-	  return(0);
+	    display_error_and_wait("Error during receive!");
+	    return(0);
     }
 
     // User cancel?
     if (kbhit()) {
       r = cgetc();
-      while (cgetc() == r);			// debouce key
+      //while (cgetc() == r);			// debouce key
       if (r == '1')
         return(0);
     }
@@ -552,27 +552,28 @@ REDRAW:
       // Need to mount all devices, and set hostSlot on device
       r = fujinet_mount_all();
       if (!r) {
-	    display_error_and_wait("Error mounting all!");
-	    continue;
+	      display_error_and_wait("Error mounting all!");
+	      continue;
       }
 
       // read all the device slots, set the hostslot and then write back
       // this is the only way to do this currently with FN
       r = fujinet_read_device_slots(disk_slots);
       if (!r) {
-		display_error_and_wait("Error read disk slots!");
-		continue;
+		    display_error_and_wait("Error read disk slots!");
+		    continue;
       }
       disk_slots[0].hostSlot = sel_host;
       r = fujinet_write_device_slots(&disk_slots);
       if (!r) {
-		display_error_and_wait("Error write disk slots!");
-		continue;
+		    display_error_and_wait("Error write disk slots!");
+		    continue;
       }
 
       r = get_file(0, dirpos+sel);
       if (!r)
-	    continue;
+	      goto REDRAW;
+
       display_file_data();
     }
   }

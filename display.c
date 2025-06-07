@@ -59,15 +59,24 @@ void print_key_legend(char *legend)
   tgi_outtextxy(8, KEY_LINE, legend);
 }
 
+/* clear_error_line
+ *
+ */
+void clear_error_line(void)
+{
+  tgi_setcolor(TGI_COLOR_BLACK);
+  tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
+  tgi_setcolor(TGI_COLOR_WHITE);
+}
 
-/* print_error
+
+/*  print_error
  *
  * displays an error message on last line, in red
  */
 void print_error(char *msg)
 {
-  tgi_setcolor(TGI_COLOR_BLACK);
-  tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
+  clear_error_line();
   tgi_setcolor(TGI_COLOR_RED);
   tgi_outtextxy(1, ERROR_LINE, msg);
   tgi_setcolor(TGI_COLOR_WHITE);
@@ -83,13 +92,13 @@ void display_error_and_wait(char *msg)
 {
   print_error(msg);
   wait_for_button();
-  tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
+  clear_error_line();
 }
 
 
 void display_adapter_config(void)
 {
-  unsigned char r;
+  unsigned char r, j;
 
 
   tgi_clear();
@@ -120,7 +129,10 @@ void display_adapter_config(void)
     tgi_outtextxy(2, 75, s);
   }
 
-  check_joy_and_keys(&r);           // something was pressed
+  // wait for some keypress
+  do {
+    r = check_joy_and_keys(&j);
+  } while (!r && !j);
 }
 
 
