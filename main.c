@@ -84,7 +84,7 @@ RESCAN:
     } while (!r && !joy);
 
     if (r == '2') {						// Opt2 exits
-	  return(0);
+      return(0);
     }
 
     if (JOY_UP(joy)) {
@@ -604,15 +604,12 @@ void main(void)
 
   // Clear the screen
   tgi_setcolor(TGI_COLOR_WHITE);
+  tgi_setbgcolor(TGI_COLOR_BLACK);
   tgi_clear();
-
 
   // Splash screen here
                       //012345678901234567890
   //tgi_outtextxy(1, 8, "FujiNet Config v0.1");
-
-
-  select_sdcard_dir();
 
   // Check wifi status, if not connected do select ssid
   r = fujinet_get_wifi_status();
