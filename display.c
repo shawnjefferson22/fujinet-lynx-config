@@ -29,17 +29,18 @@ void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t 
 {
   // clear under box
   tgi_setcolor(TGI_COLOR_BLACK);
+  tgi_setbgcolor(TGI_COLOR_BLACK);
   tgi_bar(x1, y1, x2, y2);
 
   // draw box, offsetting slightly for text
   tgi_setcolor(color);
   tgi_line(x1, y1+4, x2, y1+4);     // top line
-  tgi_lineto(x2, y2);				// right line
-  tgi_lineto(x1, y2);				// bottom line
-  tgi_lineto(x1, y1+4);				// left line
+  tgi_lineto(x2, y2);				        // right line
+  tgi_lineto(x1, y2);				        // bottom line
+  tgi_lineto(x1, y1+4);				      // left line
 
   // draw text title and prompt if passed in
-  tgi_setcolor(TGI_COLOR_WHITE);
+    tgi_setcolor(TGI_COLOR_WHITE);
   if (title)
     tgi_outtextxy(x1+8, y1, title);
   if (prompt)
@@ -59,13 +60,14 @@ void print_key_legend(char *legend)
   tgi_outtextxy(8, KEY_LINE, legend);
 }
 
+
 /* clear_error_line
  *
  */
 void clear_error_line(void)
 {
   tgi_setcolor(TGI_COLOR_BLACK);
-  tgi_bar(0, ERROR_LINE, 0, ERROR_LINE+8);
+  tgi_bar(0, ERROR_LINE, 159, ERROR_LINE+8);
   tgi_setcolor(TGI_COLOR_WHITE);
 }
 
@@ -106,9 +108,7 @@ void display_adapter_config(void)
 
   r = fujinet_get_adapter_config();
   if (!r) {
-    tgi_setcolor(TGI_COLOR_RED);
-    tgi_outtextxy(1, 1, "Error reading config!");
-    tgi_setcolor(TGI_COLOR_WHITE);
+    print_error("Error reading config!");
   }
   else {
     sprintf(s, "SSID: %-13.13s", fncfg.ssid);
@@ -195,7 +195,7 @@ void display_file_data(void)
     //tgi_outtextxy(2, j*8, s);
     for(i=0; i<16; ++i) {
       sprintf(s, "%02X", dskbuf[(j*16)+i]);
-      tgi_outtextxy(0, j*8, s);
+      tgi_outtextxy(i*8, j*8, s);
     }
   }
 

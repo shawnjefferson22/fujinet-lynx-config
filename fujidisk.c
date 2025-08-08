@@ -56,10 +56,10 @@ unsigned char fujidisk_set_block(unsigned long block)
   unsigned char r, i;
 
 
-  dskbuf[0] = block & 0xFF;
-  dskbuf[1] = block & 0xFF00;
-  dskbuf[2] = block & 0xFF0000;
-  dskbuf[3] = block & 0xFF000000;
+  dskbuf[0] = (unsigned char) (block & 0xFF);
+  dskbuf[1] = (unsigned char) ((block & 0xFF00UL) >> 8);
+  dskbuf[2] = (unsigned char) ((block & 0xFF0000UL) >> 16);
+  dskbuf[3] = (unsigned char) ((block & 0xFF000000UL) >> 24);
   dskbuf[4] = 0;            // reserved byte
 
   for(i=0; i<FN_RETRIES; ++i) {

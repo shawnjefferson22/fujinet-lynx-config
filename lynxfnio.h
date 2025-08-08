@@ -63,11 +63,11 @@ typedef struct {
 
 // Some globals to help with code size/speed (could be moved to zero page)
 extern unsigned char _ck;			// checksum byte
-extern unsigned char _r;			// response/data from FN
+extern char _r;						// response/data from FN
 
 
 // helper functions
-void _checksum(unsigned char *b, unsigned short len);
+void _checksum(char *b, unsigned short len);
 void _serial_get_loop(void);
 
 
@@ -75,8 +75,8 @@ unsigned char fnio_init(void);
 unsigned char fnio_done(void);
 void fnio_reset(unsigned char dev);
 unsigned char fnio_status(unsigned char dev, unsigned char *buf);
-unsigned char fnio_send(unsigned char dev, unsigned char *buf, unsigned short len);
-unsigned char fnio_recv(unsigned char dev, unsigned char *buf, unsigned short *len);
+unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len);
+unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len);
 
 
 #endif /* FUJINET_H */

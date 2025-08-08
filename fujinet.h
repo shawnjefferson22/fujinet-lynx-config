@@ -139,12 +139,12 @@ typedef struct
 extern FN_SSID_DETAIL wifi;
 extern FN_ADAPTER_CONFIG fncfg;
 extern FN_SSID_PASS ssid_pass;
-extern unsigned char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
+extern char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
 extern FN_DISK_SLOT disk_slots[MAX_DISK_SLOTS];
 
 // helper functions
 unsigned char _send_cmd(unsigned int l);
-unsigned char _send_cmd_and_recv_buf(unsigned int l, unsigned char *buf);
+unsigned char _send_cmd_and_recv_buf(unsigned int l, char *buf);
 
 // Fujinet functions
 unsigned char fujinet_get_wifi_status(void);
@@ -166,6 +166,6 @@ unsigned char fujinet_set_device_filename(unsigned char ds, char *filename);
 unsigned char fujinet_mount_image(unsigned char ds, unsigned char options);
 unsigned char fujinet_mount_all(void);
 unsigned char fujinet_read_device_slots(FN_DISK_SLOT slots[MAX_DISK_SLOTS]);
-unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots[MAX_DISK_SLOTS]);
+unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots);
 
 #endif /* FUJINET_H */

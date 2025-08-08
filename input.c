@@ -10,6 +10,7 @@
 #include <joystick.h>
 #include "display.h"
 #include "input.h"
+#include "sdcard.h"
 
 
 char input_chars[] = {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,!@#$%^&*()[]<>/?:; _"};
@@ -30,7 +31,7 @@ unsigned char _find_char(unsigned char c)
 
 
 // removes a character from the string at position i
-void _remove_char(unsigned char *s, unsigned char i)
+void _remove_char(char *s, unsigned char i)
 {
   unsigned char n;
 
@@ -41,7 +42,7 @@ void _remove_char(unsigned char *s, unsigned char i)
 
 
 // string passed in must have max size-2 to insert a char
-void _insert_char(unsigned char *s, unsigned char i)
+void _insert_char(char *s, unsigned char i)
 {
   unsigned char n;
 

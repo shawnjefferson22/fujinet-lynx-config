@@ -21,10 +21,10 @@
 
 #define FN_RETRIES   3       // number of retries for commands
 
-unsigned char fn_cmd[512];   // Fujinet command to send + aux bytes (might need to be increased to 1024)
+char fn_cmd[512];   // Fujinet command to send + aux bytes (might need to be increased to 1024)
 unsigned short fn_len;       // length of data returned
 
-unsigned char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
+char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
 FN_DISK_SLOT disk_slots[MAX_DISK_SLOTS];
 FN_ADAPTER_CONFIG fncfg;
 FN_SSID_DETAIL wifi;
@@ -52,7 +52,7 @@ unsigned char _send_cmd(unsigned int l)
 // helper to send a command that sends data back
 // it's the callers responsibility to have a buffer of proper length
 // and to cast the data properly
-unsigned char _send_cmd_and_recv_buf(unsigned int l, unsigned char *buf)
+unsigned char _send_cmd_and_recv_buf(unsigned int l, char *buf)
 {
   unsigned char r, i;
 
@@ -76,7 +76,7 @@ unsigned char _send_cmd_and_recv_buf(unsigned int l, unsigned char *buf)
 unsigned char fujinet_get_wifi_status(void)
 {
   unsigned char r;
-  unsigned char status;
+  char status;
 
   fn_cmd[0] = FUJICMD_GET_WIFISTATUS;
 
@@ -95,7 +95,7 @@ unsigned char fujinet_get_wifi_status(void)
 unsigned char fujinet_scan_networks(void)
 {
   unsigned char r;
-  unsigned char num;
+  char num;
 
   fn_cmd[0] = FUJICMD_SCAN_NETWORKS;
 
@@ -114,7 +114,7 @@ unsigned char fujinet_scan_results(unsigned char n)
   fn_cmd[0] = FUJICMD_GET_SCAN_RESULT;
   fn_cmd[1] = n;
 
-  r = _send_cmd_and_recv_buf(2, (unsigned char *) &wifi);
+  r = _send_cmd_and_recv_buf(2, (char *) &wifi);
   if (r)
     return 1;
 
@@ -128,7 +128,7 @@ unsigned char fujinet_get_adapter_config(void)
 
   fn_cmd[0] = FUJICMD_GET_ADAPTERCONFIG;
 
-  r = _send_cmd_and_recv_buf(1, (unsigned char *) &fncfg);
+  r = _send_cmd_and_recv_buf(1, (char *) &fncfg);
   if (r)
     return 1;
 
@@ -142,7 +142,7 @@ unsigned char fujinet_get_ssid(void)
 
   fn_cmd[0] = FUJICMD_GET_SSID;
 
-  r = _send_cmd_and_recv_buf(1, (unsigned char *) &ssid_pass);
+  r = _send_cmd_and_recv_buf(1, (char *) &ssid_pass);
   if (r)
     return 1;
 
@@ -173,7 +173,7 @@ unsigned char fujinet_read_host_slots(void)
 
   fn_cmd[0] = FUJICMD_READ_HOST_SLOTS;
 
-  r = _send_cmd_and_recv_buf(1, (unsigned char *) &host_slots);
+  r = _send_cmd_and_recv_buf(1, (char *) &host_slots);
   if (r)
     return 1;
 
@@ -262,7 +262,7 @@ unsigned char fujinet_get_directory_position(unsigned int *pos)
 
   fn_cmd[0] = FUJICMD_GET_DIRECTORY_POSITION;
 
-  r = _send_cmd_and_recv_buf(1, (unsigned char *) pos);
+  r = _send_cmd_and_recv_buf(1, (char *) pos);
   if (r)
     return(1);
 
@@ -296,7 +296,7 @@ unsigned char fujinet_read_directory_entry(unsigned char maxlen, unsigned char e
 
   memset(dir_entry, 0, maxlen);		 // clear entry buffer
 
-  r = _send_cmd_and_recv_buf(3, (unsigned char *) dir_entry);
+  r = _send_cmd_and_recv_buf(3, (char *) dir_entry);
   if (r)
     return(1);
 
@@ -341,7 +341,7 @@ unsigned char fujinet_mount_all(void)
   unsigned char r;
 
   fn_cmd[0] = FUJICMD_MOUNT_ALL;
-  
+
   r = _send_cmd(1);
   if (r)
     return(1);
@@ -356,15 +356,15 @@ unsigned char fujinet_read_device_slots(FN_DISK_SLOT slots[MAX_DISK_SLOTS])
 
   fn_cmd[0] = FUJICMD_READ_DEVICE_SLOTS;
 
-  r = _send_cmd_and_recv_buf(1, (unsigned char *) slots);
+  r = _send_cmd_and_recv_buf(1, (char *) slots);
   if (r)
     return(1);
 
-  return(0);    // something went wrong 
+  return(0);    // something went wrong
 }
 
 
-unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots[MAX_DISK_SLOTS])
+unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots)
 {
   unsigned char r;
 
@@ -375,5 +375,5 @@ unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots[MAX_DISK_SLOTS])
   if (r)
     return(1);
 
-  return(0);    // something went wrong 
+  return(0);    // something went wrong
 }

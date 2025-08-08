@@ -17,9 +17,9 @@
 #include "fujidisk.h"
 #include "input.h"
 #include "lynxfnio.h"
+#include "sdcard.h"
+#include "bennvenn.h"
 
-
-#define SCROLL_DELAY  4000		// delay speed for directory entry scrolling
 
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
@@ -27,7 +27,6 @@ unsigned char sel_host;         // store sel_host for directory display
 char dirpath[256];          	// directory path to pass to open directory
 char filename[256];             // filename buffer
 unsigned char dir_last_page;    // last directory page?
-
 
 
 unsigned char select_wifi_network(void)
@@ -249,7 +248,7 @@ REDRAW:
 }
 
 
-void get_files(void)
+void get_dir_entries(void)
 {
   unsigned char i, r;
 
@@ -303,7 +302,7 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
     return(0);
   }
 
-  r = fujinet_read_directory_entry(128, 0, (unsigned char *) entry);  // read full directory name
+  r = fujinet_read_directory_entry(128, 0, entry);  // read full directory name
   if (!r) {
     display_error_and_wait("Error reading dir!");
     return(0);
@@ -365,12 +364,12 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     return(0);
   }
 
-  draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "Option1=Cancel");
+  draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
 
   // Get all the blocks
   for(i=0; i<blocks; ++i) {
     sprintf(s, "Block %i of %i", i+1, blocks);
-    tgi_outtextxy(6, 18, s);
+    tgi_outtextxy(6, 17, s);
     r = fujidisk_set_block(i);
     if (!r) {
 	    display_error_and_wait("Error setting block!");
@@ -385,7 +384,6 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     // User cancel?
     if (kbhit()) {
       r = cgetc();
-      //while (cgetc() == r);			// debouce key
       if (r == '1')
         return(0);
     }
@@ -415,7 +413,7 @@ REDRAW:
   memset(dirpath, 0, 256);                // clear the dirpath
   strcpy(dirpath, "/");                   // start at root
   open_dir();
-  get_files();
+  get_dir_entries();
 
   // input loop
   while(1) {
@@ -480,30 +478,30 @@ REDRAW:
       // go back previous page?
       if (dirpos > 9) {
         dirpos -= 10;                       // get previous page of entries
-		r = fujinet_set_directory_position(dirpos);
-		if (!r) {
-    	  display_error_and_wait("Error set dir pos!");
+		    r = fujinet_set_directory_position(dirpos);
+		    if (!r) {
+    	    display_error_and_wait("Error set dir pos!");
           return;
-	    }
+	      }
 
-        get_files();			// get more directory entries
-        sel = 0;                // set selected at zero
-        continue;               // restart loop
+        get_dir_entries();			      // get more directory entries
+        sel = 0;                      // set selected at zero
+        continue;                     // restart loop
       }
       // go back to previous directory?
       if (dirpath[1] != '\0') {				// at root already?
         strip_dir_from_path();				// back up a directory
-        open_dir();                         // open the dir
-        get_files();					    // get new directory entries
-        sel = 0;                            // set selected at zero
-        continue;							// restart the loop
+        open_dir();                   // open the dir
+        get_dir_entries();					  // get new directory entries
+        sel = 0;                      // set selected at zero
+        continue;							        // restart the loop
       }
     }
     if (JOY_RIGHT(joy)) {
       if (!dir_last_page) {					// if not at last page, get next page
         dirpos += 10;
 
-        get_files();
+        get_dir_entries();
         sel = 0;
         continue;							// restart the loop
       }
@@ -525,22 +523,38 @@ REDRAW:
       if (entry[strlen(entry)-1] == '/') {
         strcat(dirpath, entry);			  // add this dir to dirpath
         open_dir();                   // open the dir
-        get_files();					        // get new directory entries
+        get_dir_entries();					  // get new directory entries
         sel = 0;                      // set selected at zero
         continue;                     // skip to top of loop
       }
 
       // Handle link
       if (entry[0] == '+') {
-        strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						// copy link to last host slot
+        strcpy(host_slots[MAX_HOSTS-1], &entry[1]);						        // copy link to last host slot
         r = fujinet_write_host_slots((unsigned char *) host_slots);		// write the host slots
         if (!r) {
           display_error_and_wait("Error writing slots!");
         }
-        return;                             // exit to host select
+        return;                               // exit to host select
       }
 
       // Handle file
+      // read all the device slots, set the hostslot and then write back
+      // this is the only way to do this currently with FN
+      r = fujinet_read_device_slots(disk_slots);
+      if (!r) {
+		    display_error_and_wait("Error read disk slots!");
+		    continue;
+      }
+      disk_slots[0].hostSlot = sel_host;
+      disk_slots[0].mode = DISK_ACCESS_MODE_READ;
+      strncpy(disk_slots[0].filename, entry, 31);
+      r = fujinet_write_device_slots(&disk_slots[0]);
+      if (!r) {
+		    display_error_and_wait("Error write disk slots!");
+		    continue;
+      }
+
       strcpy(filename, dirpath);
       strcat(filename, entry);
       r = fujinet_set_device_filename(0, &filename[0]);
@@ -556,20 +570,12 @@ REDRAW:
 	      continue;
       }
 
-      // read all the device slots, set the hostslot and then write back
-      // this is the only way to do this currently with FN
-      r = fujinet_read_device_slots(disk_slots);
-      if (!r) {
-		    display_error_and_wait("Error read disk slots!");
-		    continue;
-      }
-      disk_slots[0].hostSlot = sel_host;
-      r = fujinet_write_device_slots(&disk_slots);
-      if (!r) {
-		    display_error_and_wait("Error write disk slots!");
-		    continue;
-      }
+      // Select a destination directory on sdcard
+      r = select_sdcard_dir();
+      if (!r)
+        goto REDRAW;
 
+      // Download the file
       r = get_file(0, dirpos+sel);
       if (!r)
 	      goto REDRAW;
@@ -604,6 +610,9 @@ void main(void)
   // Splash screen here
                       //012345678901234567890
   //tgi_outtextxy(1, 8, "FujiNet Config v0.1");
+
+
+  select_sdcard_dir();
 
   // Check wifi status, if not connected do select ssid
   r = fujinet_get_wifi_status();

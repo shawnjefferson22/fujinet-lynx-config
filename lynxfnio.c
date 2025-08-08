@@ -21,7 +21,7 @@
 
 // Global variables
 unsigned char _ck;			// checksum byte
-unsigned char _r;			// response/data from FN
+char _r;					// response/data from FN
 
 
 
@@ -61,7 +61,7 @@ void fnio_reset(unsigned char dev)
 unsigned char fnio_status(unsigned char dev, unsigned char *buf)
 {
   unsigned char i;
-  
+
 
   // Send the status command, a response will be sent
   ser_put(MN_STATUS | dev);
@@ -72,9 +72,9 @@ unsigned char fnio_status(unsigned char dev, unsigned char *buf)
     _serial_get_loop();
     buf[i] = _r;
   }
-  
+
   // checksum matches?
-  _checksum((unsigned char *) &buf[1], 4);
+  _checksum((char *) &buf[1], 4);
   if (_ck == buf[5])
     return(1);                      // return success
   else
@@ -87,7 +87,7 @@ unsigned char fnio_status(unsigned char dev, unsigned char *buf)
  * @param *b pointer to buffer
  * @param len length of buffer
  */
-void _checksum(unsigned char *b, unsigned short len)
+void _checksum(char *b, unsigned short len)
 {
   register unsigned short i;
 
@@ -119,7 +119,7 @@ void _serial_get_loop(void)
  * @param len Length of buffer to send
  * @return nack (0xCx) or ack (0x9x)
  */
-unsigned char fnio_send(unsigned char dev, unsigned char *buf, unsigned short len)
+unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
 {
   register unsigned short i;
 
@@ -167,7 +167,7 @@ unsigned char fnio_cts(unsigned char dev)
 }
 
 
-unsigned char fnio_recv(unsigned char dev, unsigned char *buf, unsigned short *len)
+unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len)
 {
   register unsigned short i;
 
