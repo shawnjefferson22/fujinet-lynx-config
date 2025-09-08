@@ -364,7 +364,11 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     return(0);
   }
 
+  tgi_clear();
   draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
+  
+  sprintf(s, "%-19s", sd_dir);        // display dest dir
+  tgi_outtextxy(1, 0, s);
 
   // Get all the blocks
   for(i=0; i<blocks; ++i) {
@@ -402,7 +406,7 @@ void select_files(void)
   unsigned int delay;
   unsigned char joy, sel;
   unsigned int dirpos;
-  char entry[128];
+  char entry[129];
 
 REDRAW:
   tgi_clear();
@@ -450,18 +454,18 @@ REDRAW:
           goto REDRAW;
           break;
         case '2':
-		  r = select_wifi_network();
-		  return;							// return to hosts selection
+		      r = select_wifi_network();
+		      return;							// return to hosts selection
       }
     }
 
     if (JOY_UP(joy)) {
-      if (sel != 0)							// not at top of page
+      if (sel != 0)						    // not at top of page
         --sel;
-      else {								// at top of page
-	    if (dirpos > 9) {					// only if we aren't at top of directory already!
-	      joy = JOY_LEFT_MASK;			    // set joy left, and let it process down below
-	    }
+      else {								      // at top of page
+	      if (dirpos > 9) {					// only if we aren't at top of directory already!
+	        joy = JOY_LEFT_MASK;		// set joy left, and let it process down below
+	      }
       }
     }
     if (JOY_DOWN(joy)) {
@@ -471,7 +475,7 @@ REDRAW:
           --sel;
       }
       else {
-	    joy = JOY_RIGHT_MASK;				// set joystick right and let it process down below
+	      joy = JOY_RIGHT_MASK;				// set joystick right and let it process down below
       }
     }
     if (JOY_LEFT(joy)) {
@@ -509,8 +513,8 @@ REDRAW:
     // B button exits file selection, bach to host selection
     if (JOY_BTN_2(joy)) {
 	    fujinet_close_directory();		  	      // close the directory before we try another host (ignore return value)
-        fujinet_unmount_host(sel_host);       // unmount host (ignore return value)
-        return;                               // exit to host select
+      fujinet_unmount_host(sel_host);       // unmount host (ignore return value)
+      return;                               // exit to host select
     }
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
@@ -541,22 +545,23 @@ REDRAW:
       // Handle file
       // read all the device slots, set the hostslot and then write back
       // this is the only way to do this currently with FN
-      r = fujinet_read_device_slots(disk_slots);
+      r = fujinet_read_device_slots(&disk_slots[0]);
       if (!r) {
 		    display_error_and_wait("Error read disk slots!");
 		    continue;
       }
       disk_slots[0].hostSlot = sel_host;
       disk_slots[0].mode = DISK_ACCESS_MODE_READ;
-      strncpy(disk_slots[0].filename, entry, 31);
+      strncpy(disk_slots[0].filename, entry, 35);
       r = fujinet_write_device_slots(&disk_slots[0]);
       if (!r) {
 		    display_error_and_wait("Error write disk slots!");
 		    continue;
       }
 
-      strcpy(filename, dirpath);
+      strcpy(filename, dirpath);          // FIXME: this only allows max 255 long string for filename
       strcat(filename, entry);
+
       r = fujinet_set_device_filename(0, &filename[0]);
       if (!r) {
         display_error_and_wait("Error setting device!");

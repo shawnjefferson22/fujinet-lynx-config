@@ -120,6 +120,10 @@ unsigned char select_sdcard_dir(void)
     // Process joystick and keys
     do {
       r = check_joy_and_keys(&joy);
+      if (r == '2')       // opt2 exits
+        return(0);
+      if (r == '1')
+        return(1);        // opt1 selects
 
       // Need to scroll this entry?
       if ((delay == SCROLL_DELAY) && (strlen(filenames[sel]) > 19)) {
@@ -198,8 +202,8 @@ unsigned char select_sdcard_dir(void)
 
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
-      strcat(sd_dir, "/");                     // add slash
       strcat(sd_dir, filenames[sel]);          // add to directory string
+      strcat(sd_dir, "/");                     // add slash
       
       open_sd_dir(dirpos+sel);                
       dirpos = sel = 0;

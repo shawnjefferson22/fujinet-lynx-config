@@ -155,11 +155,12 @@ unsigned char fujinet_set_ssid(char *ssid, char *password)
   unsigned char r;
 
   fn_cmd[0] = FUJICMD_SET_SSID;
+  fn_cmd[1] = 1;                    // save
 
   memcpy(((FN_SSID_PASS *) &fn_cmd[1])->ssid, ssid, MAX_SSID_LEN+1);
   memcpy(((FN_SSID_PASS *) &fn_cmd[1])->password, password, MAX_WIFI_PASS_LEN);
 
-  r = _send_cmd(sizeof(FN_SSID_PASS)+1);      // send cmd + FN_SSID_PASS
+  r = _send_cmd(sizeof(FN_SSID_PASS)+2);      // send cmd, save + FN_SSID_PASS
   if (r)
     return(1);
 
@@ -350,7 +351,7 @@ unsigned char fujinet_mount_all(void)
 }
 
 
-unsigned char fujinet_read_device_slots(FN_DISK_SLOT slots[MAX_DISK_SLOTS])
+unsigned char fujinet_read_device_slots(FN_DISK_SLOT *slots)
 {
   unsigned char r;
 
@@ -369,7 +370,7 @@ unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots)
   unsigned char r;
 
   fn_cmd[0] = FUJICMD_WRITE_DEVICE_SLOTS;
-  memcpy(&fn_cmd[1], slots, sizeof(slots));
+  memcpy(&fn_cmd[1], slots, (sizeof(FN_DISK_SLOT)*MAX_DISK_SLOTS));
 
   r = _send_cmd((sizeof(FN_DISK_SLOT)*MAX_DISK_SLOTS)+1);
   if (r)
