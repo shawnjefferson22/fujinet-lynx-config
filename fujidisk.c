@@ -82,11 +82,16 @@ unsigned char fujidisk_recv_block(void)
 
   for(i=0; i<FN_RETRIES; ++i) {
     r = fnio_recv(DISK_DEV, &dskbuf[0], &fd_len);
-    if (r == DISK_ACK) break;
+    if (r) break;
   }
 
-  // Error or not enough data returned?
-  if ((fd_len != 256) || (r == DISK_NACK))
+  // typically a disk "block" will be 256 bytes, but the last block may be partial as
+  // not all files on the Lynx are divisble by 256 bytes. We could handle the last
+  // block as a special case, or just write 256 bytes to the last block, making
+  // the file on sdcard slightly larger than on the server.
+
+  // Error or no data returned?
+  if ((fd_len == 0) || (!r))
     return(0);
   else
     return(1);

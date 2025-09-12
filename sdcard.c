@@ -202,8 +202,8 @@ unsigned char select_sdcard_dir(void)
 
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
-      strcat(sd_dir, filenames[sel]);          // add to directory string
-      strcat(sd_dir, "/");                     // add slash
+      strcat(sd_dir, filenames[sel]);       // add to directory string, start past the slash
+      strcat(sd_dir, "/");                  // add slash
       
       open_sd_dir(dirpos+sel);                
       dirpos = sel = 0;

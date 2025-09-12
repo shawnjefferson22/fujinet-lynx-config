@@ -10,7 +10,7 @@
 #define LYNXFNIO_H
 
 // Devices
-#define DISK_DEV    0x04            // disk device
+#define DISK_DEV  0x04      // disk device
 #define NET_DEV 	0x09			// network device
 #define FN_DEV		0x0F			// Fujinet device
 
@@ -37,7 +37,7 @@
 #define NET_ACK		(NM_ACK & NET_DEV)
 #define NET_NACK	(NM_NACK & NET_DEV)
 #define DISK_ACK    (NM_ACK & DISK_DEV)
-#define DISK_NACK   (NM_ACK & DISK_DEV)
+#define DISK_NACK   (NM_NACK & DISK_DEV)
 
 // device type
 #define DEVTYPE_CHAR     0

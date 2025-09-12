@@ -354,7 +354,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 
   // calculate blocks to download
   blocks = size / 256;
-  if (size % 256)
+  if (size % 256)        // last block may be partial
     blocks++;
 
   // mount the disk image in device slot
@@ -392,9 +392,10 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
         return(0);
     }
 
-    // do something with the dksbuf here
-
-  }
+    // FIXME: do something with the dksbuf here, write to flash
+    // FIXME: detect last block (size % 256) > 0 and only write the real
+    // amount of bytes to sdcard of last block
+    }
 
   return(1);
 }
@@ -586,6 +587,7 @@ REDRAW:
 	      goto REDRAW;
 
       display_file_data();
+      goto REDRAW;
     }
   }
 

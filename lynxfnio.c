@@ -178,7 +178,7 @@ unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len)
 
   _serial_get_loop();						// get response
   if ((_r & 0xF0) == NM_NACK)		// nothing to receive
-    return _r;							    // return NAK
+    return 0;							      // return failure
 
   // We got a response, let's receive it
   if (fnio_cts(dev)) {					// clear to send?
@@ -203,19 +203,22 @@ unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len)
 
       // checksum matches?
       _checksum(buf, *len);
-      if (_r == _ck)
+      if (_r == _ck) {
 		    ser_put(MN_ACK | dev);								// ACK
+        ser_get((char *) &_r);                // get reflected data
+        return(1);                            // succes, checksum matches
+      }
       else {
 		    ser_put(MN_NACK | dev);								// NACK, checksum bad
+        ser_get((char *) &_r);                // get reflected data
 		    *len = 0;											        // return zero length
+        return(0);                            // checksum bad
   	  }
-
-      ser_get((char *) &_r);								  // get reflected data
-
   }
   else {
     *len = 0;												          // zero bytes received
+    return(0);                                // didn't get the CTS
   }
 
-  return (NM_ACK | dev);									    // return ACK (change to true/false return? -SJ)
+  return (0);									                // shouldn't get here
 }

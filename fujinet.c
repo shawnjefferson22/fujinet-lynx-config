@@ -66,10 +66,10 @@ unsigned char _send_cmd_and_recv_buf(unsigned int l, char *buf)
 
   // get response
   r = fnio_recv(FN_DEV, buf, &fn_len);
-  if (fn_len !=0)      // did we receive anything?
-    return(1);      // return success
+  if ((fn_len !=0) && (r))      // did we receive anything?
+    return(1);                  // return success
   else
-    return(0);      // return failure
+    return(0);                  // return failure
 }
 
 
