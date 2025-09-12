@@ -392,6 +392,8 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
         return(0);
     }
 
+     //display_file_data();     // testing
+   
     // FIXME: do something with the dksbuf here, write to flash
     // FIXME: detect last block (size % 256) > 0 and only write the real
     // amount of bytes to sdcard of last block
@@ -586,7 +588,7 @@ REDRAW:
       if (!r)
 	      goto REDRAW;
 
-      display_file_data();
+      display_file_data();              // display last block data, testing
       goto REDRAW;
     }
   }

@@ -79,6 +79,8 @@ unsigned char fujidisk_recv_block(void)
 {
   unsigned char r, i;
 
+  // clear the disk buffer FIXME
+  memset(dskbuf, 0x00, 256);
 
   for(i=0; i<FN_RETRIES; ++i) {
     r = fnio_recv(DISK_DEV, &dskbuf[0], &fd_len);

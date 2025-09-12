@@ -191,11 +191,9 @@ void display_file_data(void)
   unsigned char i, j;
 
   for (j=0; j<16; ++j) {
-    //sprintf(s, "%02X:", j);
-    //tgi_outtextxy(2, j*8, s);
-    for(i=0; i<16; ++i) {
+     for(i=0; i<16; ++i) {
       sprintf(s, "%02X", dskbuf[(j*16)+i]);
-      tgi_outtextxy(i*8, j*8, s);
+      tgi_outtextxy(i*16, j*8, s);
     }
   }
 
