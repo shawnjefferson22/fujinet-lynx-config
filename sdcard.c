@@ -13,7 +13,7 @@
 #include "input.h"
 #include "sdcard.h"
 
-#ifdef BENNVENN
+#ifdef SDCARD_BENNVENN
   #include "bennvenn.h"
 #endif
 
@@ -29,13 +29,13 @@ char sd_last_page;			// sdcard directory entries last page flag
  */
 void open_sd_rootdir(void)
 {
-  #ifdef BENNVENN
+  #ifdef SDCARD_BENNVENN
     unsigned char i;
     for(i=0; i<4; ++i) {
       bennvenn_send_command("BACK", 4);
     }
 
-    //bennvenn_send_command("ROOT", 4);
+    //SDCARD_BENNVENN_send_command("ROOT", 4);
 
     bennvenn_send_command("DIR4XXX ", 8);
     bennvenn_file_count();
@@ -45,7 +45,7 @@ void open_sd_rootdir(void)
 
 void open_sd_dir(unsigned int entry)
 {
-   #ifdef BENNVENN
+   #ifdef SDCARD_BENNVENN
      bennvenn_open(entry);
      bennvenn_send_command("DIR4XXX", 7);
      bennvenn_file_count();
@@ -65,17 +65,17 @@ void get_sd_entries(unsigned int dirpos)
   sd_last_page = 0;						// reset last page flag
   memset(&filenames[0], 0, sizeof(filenames));			// clear filenames array
 
-  #ifdef BENNVENN
-    if (dirpos >= bennvenn_num_folders) {
+  #ifdef SDCARD_BENNVENN
+    if (dirpos >=bennvenn_num_folders) {
       sd_last_page = 1;
       return;
     }
 
-    bennvenn_set_dir_pos(dirpos);				// set the dirpos to read from
+   bennvenn_set_dir_pos(dirpos);				// set the dirpos to read from
   #endif
 
   for(i=0; i<10; ++i) {
-    #ifdef BENNVENN
+    #ifdef SDCARD_BENNVENN
       if ((dirpos + i) > bennvenn_num_folders) {
         sd_last_page = 1;
         return;
@@ -95,13 +95,14 @@ void get_sd_entries(unsigned int dirpos)
 
 unsigned char select_sdcard_dir(void)
 {
+  #ifndef SDCARD_NONE
+  
   unsigned char r, st, scrdir;
   unsigned int delay;
   unsigned char joy, sel;
   unsigned int dirpos;
 
 
-//REDRAW:
   tgi_clear();
   draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Destination", "A=Open Dir B=Select");
 
@@ -210,6 +211,8 @@ unsigned char select_sdcard_dir(void)
       get_sd_entries(dirpos);
     }
   }
+
+  #endif
 
   return(1);
 }

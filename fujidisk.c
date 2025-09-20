@@ -20,12 +20,14 @@
 #include "input.h"
 #include "lynxfnio.h"
 #include "fujinet.h"
+#include "fujidisk.h"
 
 
-#define FN_RETRIES   3       // number of retries for commands
+#define FN_RETRIES  3       // number of retries for commands
 
-unsigned short fd_len;       // length returned
-char dskbuf[256];            // buffer to use for disk
+unsigned short fd_len;      // length returned
+char dskbuf[BLOCK_SIZE];    // buffer to use for disk
+
 
 
 void fujidisk_reset(void)
@@ -80,7 +82,7 @@ unsigned char fujidisk_recv_block(void)
   unsigned char r, i;
 
   // clear the disk buffer FIXME
-  memset(dskbuf, 0x00, 256);
+  memset(dskbuf, 0x00, BLOCK_SIZE);
 
   for(i=0; i<FN_RETRIES; ++i) {
     r = fnio_recv(DISK_DEV, &dskbuf[0], &fd_len);

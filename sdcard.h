@@ -3,8 +3,9 @@
 
 
 // Type of SD card to build for
-#define BENNVENN
-//#define LYNXGD
+//#define SDCARD_BENNVENN
+//#define SDCARD_LYNXGD
+//#define SDCARD_NONE
 
 extern char sd_buf[256];			// sdcard read buffer
 extern char sd_dir[256];			// sdcard destination directory

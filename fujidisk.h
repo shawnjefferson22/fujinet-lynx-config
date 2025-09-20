@@ -10,7 +10,9 @@
 #define FUJIDISK_H
 
 
-extern char dskbuf[256];                // expose the buffer
+#define BLOCK_SIZE  256
+
+extern char dskbuf[BLOCK_SIZE];     // expose the buffer
 
 
 void fujidisk_reset(void);

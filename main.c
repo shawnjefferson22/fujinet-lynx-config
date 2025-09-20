@@ -24,7 +24,7 @@
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
 unsigned char sel_host;         // store sel_host for directory display
-char dirpath[256];          	// directory path to pass to open directory
+char dirpath[256];              // directory path to pass to open directory
 char filename[256];             // filename buffer
 unsigned char dir_last_page;    // last directory page?
 
@@ -353,8 +353,8 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   size += (unsigned long) dskbuf[9] << 24;
 
   // calculate blocks to download
-  blocks = size / 256;
-  if (size % 256)        // last block may be partial
+  blocks = size / BLOCK_SIZE;
+  if (size % BLOCK_SIZE)        // last block may be partial
     blocks++;
 
   // mount the disk image in device slot
@@ -579,10 +579,12 @@ REDRAW:
       }
 
       // Select a destination directory on sdcard
-      r = select_sdcard_dir();
-      if (!r)
-        goto REDRAW;
-
+      #ifndef SDCARD_NONE
+        r = select_sdcard_dir();
+        if (!r)
+          goto REDRAW;
+      #endif
+      
       // Download the file
       r = get_file(0, dirpos+sel);
       if (!r)
