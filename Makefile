@@ -1,7 +1,7 @@
 # Makefile for fujinet-lynx-config
 
 # Supported sdcard targets: bennvenn, gamedrive, none 
-TARGET ?= bv_sdcard
+TARGET ?= no_sdcard
 
 # Toolchain
 CC65 = cc65

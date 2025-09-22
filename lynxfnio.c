@@ -16,12 +16,15 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 #include "lynxfnio.h"
 
 
+#define RECV_TIMEOUT  3   // timeout for receive loop, in seconds
+
 // Global variables
-unsigned char _ck;			// checksum byte
-char _r;					// response/data from FN
+unsigned char _ck;			  // checksum byte
+char _r;                  // response/data from FN
 
 
 
@@ -108,7 +111,16 @@ void _checksum(char *b, unsigned short len)
  */
 void _serial_get_loop(void)
 {
-	while (ser_get(&_r) == SER_ERR_NO_DATA);
+  clock_t start, now;
+
+  start = clock(); 
+  while (ser_get(&_r) == SER_ERR_NO_DATA) {
+    now = clock();
+    if (((now - start) / CLOCKS_PER_SEC) > RECV_TIMEOUT) {
+      _r = NM_NACK;
+      break;
+    }
+  }          
 }
 
 
@@ -131,17 +143,24 @@ unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
   ser_put(MN_SEND | dev);
   ser_put(len >> 8);
   ser_put(len & 0xFF);
+  ser_get(&_r);           // get rid of reflected data
+  ser_get(&_r);
+  ser_get(&_r);
 
   // send the payload
-  for(i=0; i<len; ++i)
+  for(i=0; i<len; ++i) {
+    //while (ser_put(buf[i]) != SER_ERR_OVERFLOW);        // handle if we overflowed the TX buffer
     ser_put(buf[i]);
-
+    ser_get(&_r);         // get rid of reflected data we just sent
+  }
+  
   // send the checksum
   ser_put(_ck);
+  ser_get(&_r);           // get rid of reflected data
 
   // Get rid of reflected data we just sent.
-  for (i=0; i<(len+4); ++i)
-    ser_get(&_r);
+  //for (i=0; i<(len+4); ++i)
+  //  ser_get(&_r);
 
   // Get response
   _serial_get_loop();
