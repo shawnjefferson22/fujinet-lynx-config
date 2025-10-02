@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 #include <unistd.h>
 #include <joystick.h>
 #include "display.h"
@@ -19,6 +20,7 @@
 #include "lynxfnio.h"
 #include "sdcard.h"
 #include "bennvenn.h"
+#include "logo.h"
 
 
 
@@ -597,15 +599,47 @@ REDRAW:
 
 }
 
+void display_splash_screen(void)
+{
+  unsigned long t;
+
+  SCB_REHV_PAL logo_sprite = {
+    BPP_4 | TYPE_NORMAL, 
+    REHV, 
+    0x01, 
+    0, 
+    (unsigned char *) &fujinet_logo, 
+    0, 0,
+    0x0100, 0x0100,
+    { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF }
+  };  
+
+  tgi_setpalette(&fujinet_logo_pal);
+  tgi_sprite(&logo_sprite);
+                      //01234567890
+  tgi_outtextxy(80, 92, "Config v1.0");
+  
+  t = clock();
+  while (((clock() - t) / CLOCKS_PER_SEC) < 5) {
+    if (kbhit()) {
+      cgetc();
+      break;
+    }
+  }
+
+  tgi_setpalette(tgi_getdefpalette());
+}
+
 
 void main(void)
 {
   unsigned char r, j;
 
-
   // Setup TGI
   tgi_install(tgi_static_stddrv);
   tgi_init();
+  tgi_setdrawpage(0);
+  tgi_setviewpage(0);
 
   // setup joystick
   joy_install(joy_static_stddrv);
@@ -613,14 +647,13 @@ void main(void)
   // Start Comlynx for Fujinet
   fnio_init();
 
-  // Clear the screen
+  // display splash screen
   tgi_setcolor(TGI_COLOR_WHITE);
   tgi_setbgcolor(TGI_COLOR_BLACK);
   tgi_clear();
+  display_splash_screen();
 
-  // Splash screen here
-                      //012345678901234567890
-  //tgi_outtextxy(1, 8, "FujiNet Config v0.1");
+  // Clear the screen
 
   // Check wifi status, if not connected do select ssid
   r = fujinet_get_wifi_status();
