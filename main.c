@@ -653,8 +653,6 @@ void main(void)
   tgi_clear();
   display_splash_screen();
 
-  // Clear the screen
-
   // Check wifi status, if not connected do select ssid
   r = fujinet_get_wifi_status();
   if (!r) {
