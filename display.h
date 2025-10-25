@@ -15,6 +15,8 @@
 extern char s[21];                     // buffer for text display
 extern char filenames[10][64];         // filename display (704 bytes), filenames capped to 64 bytes
 
+void display_splash_screen(void);
+void display_wifi_sprite(uint8_t y, int8_t rssi);
 
 void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color, char *title, char *prompt);
 void print_key_legend(char *legend);

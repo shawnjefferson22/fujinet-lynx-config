@@ -65,7 +65,7 @@ RESCAN:
 
   // Add custom/hidden SSID choice
   strcpy(networks[i].ssid, "Custom SSID");
-  networks[i].rssi = 0;
+  networks[i].rssi = 127;
   n++;
 
   // Display the networks and selected one
@@ -75,8 +75,9 @@ RESCAN:
       if (i == sel)
         tgi_setbgcolor(TGI_COLOR_GREEN);
 
-      sprintf(s, "%-16.16s %3d", networks[i].ssid, networks[i].rssi);				// FIXME: graphical RSSI display here
+      sprintf(s, "%-18.18s", networks[i].ssid);
       tgi_outtextxy(1, (i*8)+8, s);
+      display_wifi_sprite((i*8)+8, networks[i].rssi);
 
       tgi_setbgcolor(TGI_COLOR_BLACK);
     }
@@ -205,11 +206,9 @@ REDRAW:
         case '1':
           display_adapter_config();
           goto REDRAW;
-          break;
         case '2':
           r = select_wifi_network();
           goto REDRAW;
-          break;
       }
     }
 
@@ -245,8 +244,6 @@ REDRAW:
       }
     }
   }
-
-  return(0);
 }
 
 
@@ -368,7 +365,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 
   tgi_clear();
   draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
-  
+
   sprintf(s, "%-19s", sd_dir);        // display dest dir
   tgi_outtextxy(1, 0, s);
 
@@ -395,7 +392,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     }
 
      //display_file_data();     // testing
-   
+
     // FIXME: do something with the dksbuf here, write to flash
     // FIXME: detect last block (size % 256) > 0 and only write the real
     // amount of bytes to sdcard of last block
@@ -457,7 +454,6 @@ REDRAW:
         case '1':
           display_adapter_config();
           goto REDRAW;
-          break;
         case '2':
 		      r = select_wifi_network();
 		      return;							// return to hosts selection
@@ -586,7 +582,7 @@ REDRAW:
         if (!r)
           goto REDRAW;
       #endif
-      
+
       // Download the file
       r = get_file(0, dirpos+sel);
       if (!r)
@@ -597,37 +593,6 @@ REDRAW:
     }
   }
 
-}
-
-void display_splash_screen(void)
-{
-  unsigned long t;
-
-  SCB_REHV_PAL logo_sprite = {
-    BPP_4 | TYPE_NORMAL, 
-    REHV, 
-    0x01, 
-    0, 
-    (unsigned char *) &fujinet_logo, 
-    0, 0,
-    0x0100, 0x0100,
-    { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF }
-  };  
-
-  tgi_setpalette(&fujinet_logo_pal);
-  tgi_sprite(&logo_sprite);
-                      //01234567890
-  tgi_outtextxy(80, 92, "Config v1.0");
-  
-  t = clock();
-  while (((clock() - t) / CLOCKS_PER_SEC) < 5) {
-    if (kbhit()) {
-      cgetc();
-      break;
-    }
-  }
-
-  tgi_setpalette(tgi_getdefpalette());
 }
 
 
@@ -681,6 +646,4 @@ void main(void)
       continue;
     select_files();
   }
-
-  return;
 }

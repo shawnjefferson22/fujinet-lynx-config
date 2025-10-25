@@ -5,12 +5,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 #include <unistd.h>
 #include <joystick.h>
 #include "display.h"
 #include "input.h"
 #include "fujinet.h"
 #include "fujidisk.h"
+#include "logo.h"
+#include "sprites.h"
 
 
 #define KEY_LINE	95
@@ -19,6 +22,101 @@
 
 char s[21];                     // buffer for text display
 char filenames[10][64];         // filename display (704 bytes), filenames capped to 64 bytes
+
+// wifi strength sprite
+SCB_REHV_PAL full_wifi_sprite = {
+    BPP_4 | TYPE_NORMAL,
+    REHV,
+    0x01,
+    0,
+    (unsigned char *) &full_wifi_spr,
+    149, 0,													// always at x = 149
+    0x0100, 0x0100,
+    { 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }		// only two pens used, background, white
+};
+
+SCB_REHV_PAL medlow_wifi_sprite = {
+    BPP_4 | TYPE_NORMAL,
+    REHV,
+    0x01,
+    0,
+    NULL,
+    149, 0,													// always at x = 149
+    0x0100, 0x0100,
+    { 0xF7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }		// only three pens used, black, white and grey
+};
+
+
+//unsigned char wifi_full_pens[8] = { 0x0F, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00 };
+//unsigned char wifi_medlow_pens[8] = { 0xF7, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00 };
+// in the default palette, pens to colors:
+// 0 = Black / Transparent
+// 7 - Grey
+// F - White
+//
+// 1 = Red
+// 3 = Green
+// 14 = yellow
+
+
+// display wifi strength sprite
+void display_wifi_sprite(uint8_t y, int8_t rssi)
+{
+
+
+  // don't display anything for custom SSID entry
+  if (rssi == 127)
+    return;
+
+	if (rssi > -50) {
+    full_wifi_sprite.vpos = y;
+	  tgi_sprite(&full_wifi_sprite);
+    return;
+	}
+	else if (rssi > -70) {
+		medlow_wifi_sprite.data = (unsigned char *) &med_wifi_spr;
+	}
+	else {
+		medlow_wifi_sprite.data = (unsigned char *) &low_wifi_spr;
+	}
+
+  medlow_wifi_sprite.vpos = y;
+	tgi_sprite(&medlow_wifi_sprite);
+}
+
+
+// display splash screen sprite, waiting 5 seconds or until key pressed
+void display_splash_screen(void)
+{
+  unsigned long t;
+  unsigned char r, joy;
+
+
+  SCB_REHV_PAL logo_sprite = {
+    BPP_4 | TYPE_NORMAL,
+    REHV,
+    0x01,
+    0,
+    (unsigned char *) &fujinet_logo,
+    0, 0,
+    0x0100, 0x0100,
+    { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF }
+  };
+
+  tgi_setpalette(&fujinet_logo_pal);
+  tgi_sprite(&logo_sprite);
+                       //01234567890
+  tgi_outtextxy(72, 92, "Config v1.0");
+
+  t = clock();
+  while (((clock() - t) / CLOCKS_PER_SEC) < 5) {
+  	r = check_joy_and_keys(&joy);
+  	if (r || joy)
+  		break;
+  }
+
+  tgi_setpalette(tgi_getdefpalette());
+}
 
 
 // draws a box, with title and prompt from x1,y1, to x2,y2.

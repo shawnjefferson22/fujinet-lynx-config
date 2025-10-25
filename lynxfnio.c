@@ -113,14 +113,14 @@ void _serial_get_loop(void)
 {
   clock_t start, now;
 
-  start = clock(); 
+  start = clock();
   while (ser_get(&_r) == SER_ERR_NO_DATA) {
     now = clock();
     if (((now - start) / CLOCKS_PER_SEC) > RECV_TIMEOUT) {
       _r = NM_NACK;
       break;
     }
-  }          
+  }
 }
 
 
@@ -153,7 +153,7 @@ unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
     ser_put(buf[i]);
     ser_get(&_r);         // get rid of reflected data we just sent
   }
-  
+
   // send the checksum
   ser_put(_ck);
   ser_get(&_r);           // get rid of reflected data
@@ -238,6 +238,4 @@ unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len)
     *len = 0;												          // zero bytes received
     return(0);                                // didn't get the CTS
   }
-
-  return (0);									                // shouldn't get here
 }
