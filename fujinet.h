@@ -164,6 +164,7 @@ unsigned char fujinet_set_directory_position(unsigned int pos);
 unsigned char fujinet_read_directory_entry(unsigned char maxlen, unsigned char extra, char *dir_entry);
 unsigned char fujinet_set_device_filename(unsigned char ds, char *filename);
 unsigned char fujinet_mount_image(unsigned char ds, unsigned char options);
+unsigned char fujinet_unmount_image(unsigned char ds);
 unsigned char fujinet_mount_all(void);
 unsigned char fujinet_read_device_slots(FN_DISK_SLOT *slots);
 unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots);

@@ -337,6 +337,21 @@ unsigned char fujinet_mount_image(unsigned char ds, unsigned char options)
 }
 
 
+unsigned char fujinet_unmount_image(unsigned char ds)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_UNMOUNT_IMAGE;
+  fn_cmd[1] = ds;
+
+  r = _send_cmd(2);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
 unsigned char fujinet_mount_all(void)
 {
   unsigned char r;

@@ -150,14 +150,20 @@ uint8_t get_input(uint8_t x, uint8_t y, uint8_t max, char *input)
 
     switch(c) {
       case '1':                         // delete char
-        _remove_char(&input[0], i);
-        i--;
-        continue;
+        if (input[0] != '\0') {
+          _remove_char(&input[0], i);
+          if (i > 0) 
+            i--;
+          continue;
+        }
       case '2':                         // insert char
-        _insert_char(&input[0], i);
-        continue;
+        if (i < max) {
+          _insert_char(&input[0], i);
+          continue;
+        }
       case '3':                         // clear string
         memset(input, 0, max);
+        i = 0;
         continue;
     }
 

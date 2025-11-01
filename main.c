@@ -23,6 +23,9 @@
 #include "logo.h"
 
 
+#define ADAPTERCFG_KEY  'P'
+#define SCANWIFI_KEY    '2'
+
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
 unsigned char sel_host;         // store sel_host for directory display
@@ -86,7 +89,7 @@ RESCAN:
       r = check_joy_and_keys(&joy);
     } while (!r && !joy);
 
-    if (r == '2') {						// Opt2 exits
+    if (r == SCANWIFI_KEY) {						// Opt2 exits
       return(0);
     }
 
@@ -203,10 +206,10 @@ REDRAW:
 
     if (r) {
       switch(r) {
-        case '1':
+        case ADAPTERCFG_KEY:
           display_adapter_config();
           goto REDRAW;
-        case '2':
+        case SCANWIFI_KEY:
           r = select_wifi_network();
           goto REDRAW;
       }
@@ -376,28 +379,31 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     r = fujidisk_set_block(i);
     if (!r) {
 	    display_error_and_wait("Error setting block!");
+      fujinet_unmount_image(disk_slot);
 	    return(0);
     }
     r = fujidisk_recv_block();
     if (!r) {
 	    display_error_and_wait("Error during receive!");
+      fujinet_unmount_image(disk_slot);
 	    return(0);
     }
 
     // User cancel?
     if (kbhit()) {
       r = cgetc();
-      if (r == '1')
+      if (r == '1') {
+        fujinet_unmount_image(disk_slot);
         return(0);
+      }
     }
-
-     //display_file_data();     // testing
 
     // FIXME: do something with the dksbuf here, write to flash
     // FIXME: detect last block (size % 256) > 0 and only write the real
     // amount of bytes to sdcard of last block
     }
 
+  fujinet_unmount_image(disk_slot);
   return(1);
 }
 
@@ -451,10 +457,10 @@ REDRAW:
 
     if (r) {
       switch(r) {
-        case '1':
+        case ADAPTERCFG_KEY:
           display_adapter_config();
           goto REDRAW;
-        case '2':
+        case SCANWIFI_KEY:
 		      r = select_wifi_network();
 		      return;							// return to hosts selection
       }
@@ -628,7 +634,7 @@ void main(void)
 
       while(1) {
         r = check_joy_and_keys(&j);
-        if (r == '1')
+        if (r == ADAPTERCFG_KEY)
           display_adapter_config();
       }
     }

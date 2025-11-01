@@ -16,6 +16,8 @@
 #include "sprites.h"
 
 
+#define TITLE_VERSION_STR   "Config v1.0"
+
 #define KEY_LINE	95
 #define ERROR_LINE  95
 
@@ -32,7 +34,7 @@ SCB_REHV_PAL full_wifi_sprite = {
     (unsigned char *) &full_wifi_spr,
     149, 0,													// always at x = 149
     0x0100, 0x0100,
-    { 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }		// only two pens used, background, white
+    { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F }		// only two pens used, background, white
 };
 
 SCB_REHV_PAL medlow_wifi_sprite = {
@@ -43,27 +45,13 @@ SCB_REHV_PAL medlow_wifi_sprite = {
     NULL,
     149, 0,													// always at x = 149
     0x0100, 0x0100,
-    { 0xF7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }		// only three pens used, black, white and grey
+    { 0x00, 0x00, 0x00, 0x00, 0x50, 0x00, 0x00, 0x0F }		// only three pens used, black, white and grey
 };
-
-
-//unsigned char wifi_full_pens[8] = { 0x0F, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00 };
-//unsigned char wifi_medlow_pens[8] = { 0xF7, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00 };
-// in the default palette, pens to colors:
-// 0 = Black / Transparent
-// 7 - Grey
-// F - White
-//
-// 1 = Red
-// 3 = Green
-// 14 = yellow
 
 
 // display wifi strength sprite
 void display_wifi_sprite(uint8_t y, int8_t rssi)
 {
-
-
   // don't display anything for custom SSID entry
   if (rssi == 127)
     return;
@@ -106,7 +94,7 @@ void display_splash_screen(void)
   tgi_setpalette(&fujinet_logo_pal);
   tgi_sprite(&logo_sprite);
                        //01234567890
-  tgi_outtextxy(72, 92, "Config v1.0");
+  tgi_outtextxy(72, 92, TITLE_VERSION_STR);
 
   t = clock();
   while (((clock() - t) / CLOCKS_PER_SEC) < 5) {
