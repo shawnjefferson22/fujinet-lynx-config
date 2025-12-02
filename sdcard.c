@@ -17,10 +17,19 @@
   #include "bennvenn.h"
 #endif
 
+#ifdef SDCARD_GAMEDRIVE
+  #include "LynxGD.h"
+#endif
+
+
 char sd_buf[256];			// sdcard read buffer
 char sd_dir[256];			// sdcard destination directory
-char sd_last_page;			// sdcard directory entries last page flag
+char sd_last_page;	  // sdcard directory entries last page flag
 
+// gamedrive directory entry
+#ifdef SDCARD_GAMEDRIVE
+  SFileInfo gd_direntry;
+#endif
 
 
 /* open_sd_rootdir
@@ -40,6 +49,16 @@ void open_sd_rootdir(void)
     bennvenn_send_command("DIR4XXX ", 8);
     bennvenn_file_count();
   #endif
+
+  #ifdef SDCARD_GAMEDRIVE
+    LynxGD_Init();
+
+    tgi_outtextxy(5, 10, "gd_init");
+    
+    LynxGD_OpenDir("/");
+
+    tgi_outtextxy(5, 10, "gd_opendir");
+  #endif
 }
 
 
@@ -49,6 +68,10 @@ void open_sd_dir(unsigned int entry)
      bennvenn_open(entry);
      bennvenn_send_command("DIR4XXX", 7);
      bennvenn_file_count();
+  #endif
+  
+  #ifdef SDCARD_GAMEDRIVE
+    LynxGD_OpenDir(sd_dir);
   #endif
 }
 
@@ -62,7 +85,7 @@ void get_sd_entries(unsigned int dirpos)
   unsigned char i;
 
 
-  sd_last_page = 0;						// reset last page flag
+  sd_last_page = 0;						                      // reset last page flag
   memset(&filenames[0], 0, sizeof(filenames));			// clear filenames array
 
   #ifdef SDCARD_BENNVENN
@@ -82,6 +105,33 @@ void get_sd_entries(unsigned int dirpos)
       }
 
       bennvenn_read_next_dir_entry((char *) &filenames[i]);
+
+      if (filenames[i][0] == '\0') {				// this must be the last page
+        sd_last_page = 1;
+        return;
+      }
+    #endif
+
+    #ifdef SDCARD_GAMEDRIVE
+      LynxGD_ReadDir(&gd_direntry);
+
+      // Skip this directory entry?     
+      if ((gd_direntry.fattrib & AM_HID) || (gd_direntry.fattrib & AM_SYS) || (gd_direntry.fattrib & AM_VOL) ||
+          (gd_direntry.fattrib & AM_LFN)) {
+        --i;
+        continue;        
+      }  
+
+      // Copy the directory entry
+      memcpy(&filenames[i][0], &gd_direntry.fname, 13);
+      
+      // Directory?
+      if (gd_direntry.fattrib & AM_DIR) {
+        filenames[i][13] = '/';
+        filenames[i][14] = '\0';
+      }
+      else
+        filenames[i][13] = '\0';
 
       if (filenames[i][0] == '\0') {				// this must be the last page
         sd_last_page = 1;
@@ -111,8 +161,13 @@ unsigned char select_sdcard_dir(void)
   memset(sd_dir, 0, 256);
   strcpy(sd_dir, "/");
   open_sd_rootdir();
+
+  tgi_outtextxy(5, 10, "sd_rootdir");
+  
   get_sd_entries(0);
 
+  tgi_outtextxy(5, 18, "get_sd_entries");
+ 
   // input loop
   while(1) {
     st = scrdir = delay = 0;                       // reset start of entry, dir of scroll, delay
@@ -176,9 +231,19 @@ unsigned char select_sdcard_dir(void)
       // go back to previous directory?
       //if (sd_dir[1] != '\0') {				  	  // at root already?
         //strip_dir_from_path();				    // back up a directory
-        bennvenn_send_command("BACK", 4);   // back up a directory
+        
+        #ifdef SDCARD_BENNVENN
+          bennvenn_send_command("BACK", 4);   // back up a directory
+        #endif
+        
         dirpos = sel = 0;
-        open_sd_dir(dirpos+sel);        		// open the dir
+        #ifdef SDCARD_BENNVENN
+          open_sd_dir(dirpos+sel);        		// open the dir
+        #endif
+        #ifdef SDCARD_GAMEDRIVE
+          open_sd_dir(sel);
+        #endif
+        
         get_sd_entries(dirpos);					    // get new directory entries
         sel = 0;                      			// set selected at zero
         continue;						                // restart the loop
@@ -206,7 +271,13 @@ unsigned char select_sdcard_dir(void)
       strcat(sd_dir, filenames[sel]);       // add to directory string, start past the slash
       strcat(sd_dir, "/");                  // add slash
       
-      open_sd_dir(dirpos+sel);                
+      #ifdef SDCARD_BENNVENN
+        open_sd_dir(dirpos+sel);        		// open the dir
+      #endif
+      #ifdef SDCARD_GAMEDRIVE
+        open_sd_dir(sel);
+      #endif
+
       dirpos = sel = 0;
       get_sd_entries(dirpos);
     }
