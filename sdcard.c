@@ -52,12 +52,7 @@ void open_sd_rootdir(void)
 
   #ifdef SDCARD_GAMEDRIVE
     LynxGD_Init();
-
-    tgi_outtextxy(5, 10, "gd_init");
-    
-    LynxGD_OpenDir("/");
-
-    tgi_outtextxy(5, 10, "gd_opendir");
+    //LynxGD_OpenDir("/");
   #endif
 }
 
@@ -69,11 +64,57 @@ void open_sd_dir(unsigned int entry)
      bennvenn_send_command("DIR4XXX", 7);
      bennvenn_file_count();
   #endif
-  
+
   #ifdef SDCARD_GAMEDRIVE
     LynxGD_OpenDir(sd_dir);
   #endif
 }
+
+
+#ifdef SDCARD_GAMEDRIVE
+// Reads directory entries from the GD card until we get to the directory position
+uint8_t _gd_find_dirpos(unsigned int dirpos)
+{
+  unsigned int i;
+  unsigned char r;
+
+
+  // bail out if we're at beginning of directory already
+  if (dirpos == 0)
+    return(1);
+
+  for (i=0; i<dirpos; i++) {
+	r = LynxGD_ReadDir(&gd_direntry);
+	if (r != FR_OK)
+	  return(0);
+
+      // Skip this directory entry?
+      if ((gd_direntry.fattrib & AM_HID) || (gd_direntry.fattrib & AM_SYS) || (gd_direntry.fattrib & AM_VOL) ||
+          (gd_direntry.fattrib & AM_LFN)) {
+        --i;
+        continue;
+      }
+  }
+
+  return(1);
+}
+
+
+void strip_dir_from_sdpath(void)
+{
+  unsigned char i;
+
+
+  for (i=strlen(sd_dir)-2; i>0; --i)		// start before the trailing '/'
+    if (sd_dir[i] == '/') {
+      sd_dir[i+1] = '\0';
+      return;
+    }
+
+  strcpy(sd_dir, "/");       				// either no directory or at root
+}
+
+#endif	// SDCARD_GAMEDRIVE
 
 
 /* get_sd_entries
@@ -83,7 +124,7 @@ void open_sd_dir(unsigned int entry)
 void get_sd_entries(unsigned int dirpos)
 {
   unsigned char i;
-
+  char str[40];
 
   sd_last_page = 0;						                      // reset last page flag
   memset(&filenames[0], 0, sizeof(filenames));			// clear filenames array
@@ -110,21 +151,38 @@ void get_sd_entries(unsigned int dirpos)
         sd_last_page = 1;
         return;
       }
-    #endif
+    #endif	// SDCARD_BENNVENN
 
     #ifdef SDCARD_GAMEDRIVE
-      LynxGD_ReadDir(&gd_direntry);
+      unsigned char r;
 
-      // Skip this directory entry?     
-      if ((gd_direntry.fattrib & AM_HID) || (gd_direntry.fattrib & AM_SYS) || (gd_direntry.fattrib & AM_VOL) ||
-          (gd_direntry.fattrib & AM_LFN)) {
-        --i;
-        continue;        
-      }  
+      r = _gd_find_dirpos(dirpos);
+      if (!r) {
+        sd_last_page = 1;
+        return;
+      }
+
+      r = LynxGD_ReadDir(&gd_direntry);
+      if (r != FR_OK) {
+        sd_last_page = 1;
+        return;
+      }
+
+      // Skip this directory entry?
+      //if ((gd_direntry.fattrib & AM_HID) || (gd_direntry.fattrib & AM_SYS) || (gd_direntry.fattrib & AM_VOL) ||
+      //    (gd_direntry.fattrib & AM_LFN)) {
+      //  --i;
+      //  continue;
+      //}
+
+   
+      //sprintf(str, "%2X", gd_direntry.fattrib);
+      //tgi_outtextxy(140, (i*8)+10, str);
+      //cgetc();
 
       // Copy the directory entry
       memcpy(&filenames[i][0], &gd_direntry.fname, 13);
-      
+
       // Directory?
       if (gd_direntry.fattrib & AM_DIR) {
         filenames[i][13] = '/';
@@ -137,7 +195,7 @@ void get_sd_entries(unsigned int dirpos)
         sd_last_page = 1;
         return;
       }
-    #endif
+    #endif	// SDCARD_GAMEDRIVE
   }
 }
 
@@ -146,7 +204,7 @@ void get_sd_entries(unsigned int dirpos)
 unsigned char select_sdcard_dir(void)
 {
   #ifndef SDCARD_NONE
-  
+
   unsigned char r, st, scrdir;
   unsigned int delay;
   unsigned char joy, sel;
@@ -161,13 +219,8 @@ unsigned char select_sdcard_dir(void)
   memset(sd_dir, 0, 256);
   strcpy(sd_dir, "/");
   open_sd_rootdir();
-
-  tgi_outtextxy(5, 10, "sd_rootdir");
-  
   get_sd_entries(0);
 
-  tgi_outtextxy(5, 18, "get_sd_entries");
- 
   // input loop
   while(1) {
     st = scrdir = delay = 0;                       // reset start of entry, dir of scroll, delay
@@ -204,9 +257,9 @@ unsigned char select_sdcard_dir(void)
     if (JOY_UP(joy)) {
       if (sel != 0)							  // not at top of page
         --sel;
-      else {								      // at top of page
+      else {								  // at top of page
 	    if (dirpos > 9) {					  // only if we aren't at top of directory already!
-	      joy = JOY_LEFT_MASK;			// set joy left, and let it process down below
+	      joy = JOY_LEFT_MASK;				  // set joy left, and let it process down below
 	    }
       }
     }
@@ -222,43 +275,37 @@ unsigned char select_sdcard_dir(void)
     }
     if (JOY_LEFT(joy)) {
       // go back previous page?
+      sel = 0;
       if (dirpos > 9) {
-        dirpos -= 10;                   // get previous page of entries
-        get_sd_entries(dirpos);		  	  // get more directory entries
-        sel = 0;                      	// set selected at zero
-        continue;                     	// restart loop
+        dirpos -= 10;                   	  // get previous page of entries
       }
-      // go back to previous directory?
-      //if (sd_dir[1] != '\0') {				  	  // at root already?
-        //strip_dir_from_path();				    // back up a directory
-        
-        #ifdef SDCARD_BENNVENN
-          bennvenn_send_command("BACK", 4);   // back up a directory
-        #endif
-        
-        dirpos = sel = 0;
-        #ifdef SDCARD_BENNVENN
-          open_sd_dir(dirpos+sel);        		// open the dir
-        #endif
-        #ifdef SDCARD_GAMEDRIVE
-          open_sd_dir(sel);
-        #endif
-        
-        get_sd_entries(dirpos);					    // get new directory entries
-        sel = 0;                      			// set selected at zero
-        continue;						                // restart the loop
-      //}
+      else {
+      	dirpos = 0;							// back at root
+      	#ifdef SDCARD_BENNVENN
+          bennvenn_send_command("BACK", 4);   	// back up a directory
+          open_sd_dir(dirpos+sel);        		  // open the dir
+      	#endif
+      	#ifdef SDCARD_GAMEDRIVE
+			if (sd_dir[1] != '\0') {			            // at root already?
+          		strip_dir_from_sdpath();		      // back up a directory
+			}
+          	open_sd_dir(sel);					          // open the previous directory
+      	#endif
+  	  }
+
+      get_sd_entries(dirpos);				            // get new directory entries
+      continue;							    	              // restart the loop
     }
     if (JOY_RIGHT(joy)) {
-      if (!sd_last_page) {						// if not at last page, get next page
+      if (!sd_last_page) {						          // if not at last page, get next page
         dirpos += 10;
 
         get_sd_entries(dirpos);
         sel = 0;
-        continue;								// restart the loop
+        continue;								                // restart the loop
       }
     }
-    
+
     // B button selects the directory
     if (JOY_BTN_2(joy)) {
       // FIXME: Do something here to record our destination
@@ -268,22 +315,24 @@ unsigned char select_sdcard_dir(void)
 
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
-      strcat(sd_dir, filenames[sel]);       // add to directory string, start past the slash
-      strcat(sd_dir, "/");                  // add slash
+      // Is this a directory?
+      if (filenames[sel][strlen(filenames[sel])] == '/') {
+        strcat(sd_dir, filenames[sel]);       	// add to directory string
+        strcat(sd_dir, "/");                  	// add slash
       
-      #ifdef SDCARD_BENNVENN
-        open_sd_dir(dirpos+sel);        		// open the dir
-      #endif
-      #ifdef SDCARD_GAMEDRIVE
-        open_sd_dir(sel);
-      #endif
+        #ifdef SDCARD_BENNVENN
+          open_sd_dir(dirpos+sel);        		// open the dir
+        #endif
+        #ifdef SDCARD_GAMEDRIVE
+          open_sd_dir(sel);
+        #endif
 
-      dirpos = sel = 0;
-      get_sd_entries(dirpos);
+        dirpos = sel = 0;
+        get_sd_entries(dirpos);
+      }
     }
   }
 
-  #endif
+  #endif		// SDCARD_NONE
 
-  return(1);
 }
