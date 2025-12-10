@@ -24,6 +24,7 @@ ifeq ($(TARGET),bv_sdcard)
     TARGET_DEFINE = SDCARD_BENNVENN
 else ifeq ($(TARGET),gd_sdcard)
     TARGET_DEFINE = SDCARD_GAMEDRIVE
+	HEADER_FIX = 1
 else ifeq ($(TARGET),no_sdcard)
     TARGET_DEFINE = SDCARD_NONE
 else
@@ -40,6 +41,12 @@ all: $(OUTPUT).lnx
 
 $(OUTPUT).lnx: $(OBJECTS)
 	$(CL65) -t lynx -m $(OUTPUT).map -o $@ $^
+
+ifdef HEADER_FIX
+	# Fix the LNX file header to tell the GameDrive Loader we want to use EEPROM
+	# \101 is octal for 0x41
+	printf '\101' | dd of="lynxcfg.lnx" bs=1 seek=60 count=1 conv=notrunc
+endif
 
 %.o: %.c
 	$(CL65) $(CFLAGS) -c -o $@ $<

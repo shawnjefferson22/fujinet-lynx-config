@@ -18,9 +18,11 @@
 #include "fujidisk.h"
 #include "input.h"
 #include "lynxfnio.h"
+#include "pathutil.h"
 #include "sdcard.h"
 #include "bennvenn.h"
 #include "logo.h"
+#include "Program.h"
 
 
 #define ADAPTERCFG_KEY  'P'
@@ -314,21 +316,6 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
 }
 
 
-void strip_dir_from_path(void)
-{
-  unsigned char i;
-
-
-  for (i=strlen(dirpath)-2; i>0; --i)		// start before the trailing '/'
-    if (dirpath[i] == '/') {
-      dirpath[i+1] = '\0';
-      return;
-    }
-
-  strcpy(dirpath, "/");       // either no directory or at root
-}
-
-
 // Get the file, display progress
 unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 {
@@ -369,8 +356,21 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   tgi_clear();
   draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
 
+  #ifdef SDCARD_GAMEDRIVE
+  strcpy(sd_dir, "/FUJINET/GAMEDRV1");
+  #else
+  strcat(sd_dir, extract_filename(filename));
+  #endif
   sprintf(s, "%-19s", sd_dir);        // display dest dir
   tgi_outtextxy(1, 0, s);
+
+  // Open file on SD card
+  r = sd_open_file(sd_dir);
+  if (!r) {
+	    display_error_and_wait("Error SD open file!");
+      fujinet_unmount_image(disk_slot);
+	    return(0);
+  }
 
   // Get all the blocks
   for(i=0; i<blocks; ++i) {
@@ -380,12 +380,14 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     if (!r) {
 	    display_error_and_wait("Error setting block!");
       fujinet_unmount_image(disk_slot);
+      sd_close_file();
 	    return(0);
     }
     r = fujidisk_recv_block();
     if (!r) {
 	    display_error_and_wait("Error during receive!");
       fujinet_unmount_image(disk_slot);
+      sd_close_file();
 	    return(0);
     }
 
@@ -394,16 +396,23 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
       r = cgetc();
       if (r == '1') {
         fujinet_unmount_image(disk_slot);
+        sd_close_file();
         return(0);
       }
     }
 
-    // FIXME: do something with the dksbuf here, write to flash
-    // FIXME: detect last block (size % 256) > 0 and only write the real
-    // amount of bytes to sdcard of last block
-    }
+	  // Write the block to SD card file
+  	r = sd_write_file_block(BLOCK_SIZE, dskbuf);
+  	if (!r) {
+	    display_error_and_wait("Error writing to SD file!");
+      fujinet_unmount_image(disk_slot);
+      sd_close_file();
+      return(0);
+ 	  }
+  }
 
   fujinet_unmount_image(disk_slot);
+  sd_close_file();
   return(1);
 }
 
@@ -414,7 +423,9 @@ void select_files(void)
   unsigned int delay;
   unsigned char joy, sel;
   unsigned int dirpos;
+  unsigned char len;
   char entry[129];
+
 
 REDRAW:
   tgi_clear();
@@ -437,13 +448,14 @@ REDRAW:
       r = check_joy_and_keys(&joy);
 
       // Need to scroll this entry?
-      if ((delay == SCROLL_DELAY) && (strlen(filenames[sel]) > 19)) {
+      len = strlen(filenames[sel]);
+      if ((delay == SCROLL_DELAY) && (len > 19)) {
         if (scrdir)
           st--;       // backward
         else
           st++;       // forward
 
-        if (st > (strlen(filenames[sel])-20))
+        if (st > (len-20))
           scrdir = 1;                                   // reverse scroll dir
         else if (st == 0)
           scrdir = 0;                                   // forward direction
@@ -501,7 +513,7 @@ REDRAW:
       }
       // go back to previous directory?
       if (dirpath[1] != '\0') {				// at root already?
-        strip_dir_from_path();				// back up a directory
+        strip_dir_from_path((char *) &dirpath);				// back up a directory
         open_dir();                   // open the dir
         get_dir_entries();					  // get new directory entries
         sel = 0;                      // set selected at zero
@@ -531,7 +543,8 @@ REDRAW:
         continue;
       }
       // Handle directory
-      if (entry[strlen(entry)-1] == '/') {
+      //if (entry[strlen(entry)-1] == '/') {
+      if (path_is_dir(entry)) {
         strcat(dirpath, entry);			  // add this dir to dirpath
         open_dir();                   // open the dir
         get_dir_entries();					  // get new directory entries
@@ -583,18 +596,27 @@ REDRAW:
       }
 
       // Select a destination directory on sdcard
-      #ifndef SDCARD_NONE
+      // Currently no flash cards allow to write an arbritrary file, so no point to select a dest
+      /*#ifndef SDCARD_NONE
         r = select_sdcard_dir();
         if (!r)
           goto REDRAW;
-      #endif
+      #endif*/
 
       // Download the file
-      r = get_file(0, dirpos+sel);
+      r = get_file(0, dirpos+sel);      // filename[0] has the full dirpath+entry
       if (!r)
 	      goto REDRAW;
 
+      #ifdef SDCARD_GAMEDRIVE
+      tgi_outtextxy(2,50, "Programming...");
+      if (LynxSD_Program(filename) == FR_OK) {
+        tgi_outtextxy(2, 58, "Launching...");
+        LaunchROM();
+      }
+      #else
       display_file_data();              // display last block data, testing
+      #endif
       goto REDRAW;
     }
   }
