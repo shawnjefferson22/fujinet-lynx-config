@@ -77,7 +77,7 @@ unsigned char fujidisk_set_block(unsigned long block)
 
 
 // Receive the disk sector/block
-unsigned char fujidisk_recv_block(void)
+unsigned int fujidisk_recv_block(void)
 {
   unsigned char r, i;
 
@@ -90,15 +90,14 @@ unsigned char fujidisk_recv_block(void)
   }
 
   // typically a disk "block" will be 256 bytes, but the last block may be partial as
-  // not all files on the Lynx are divisble by 256 bytes. We could handle the last
-  // block as a special case, or just write 256 bytes to the last block, making
-  // the file on sdcard slightly larger than on the server.
+  // not all files on the Lynx are divisble by 256 bytes.  Return the true number of
+  // bytes read.
 
   // Error or no data returned?
   if ((fd_len == 0) || (!r))
     return(0);
   else
-    return(1);
+    return(fd_len);
 }
 
 

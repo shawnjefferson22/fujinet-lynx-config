@@ -135,6 +135,22 @@ typedef struct
     char filename[MAX_DISPLAY_FILENAME_LEN];
 } FN_DISK_SLOT;
 
+typedef struct
+{
+	unsigned char year;
+	unsigned char month;
+    unsigned char day;
+	unsigned char hour;
+	unsigned char min;
+	unsigned char sec;
+	unsigned long size;
+	unsigned char isdir;
+	unsigned char type;
+    unsigned char type_char;
+	char filename[117];             // 116 + room for '/' to denote directory
+} FILE_INFO_EXT;
+
+
 // Static data structures
 extern FN_SSID_DETAIL wifi;
 extern FN_ADAPTER_CONFIG fncfg;

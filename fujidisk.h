@@ -18,7 +18,7 @@ extern char dskbuf[BLOCK_SIZE];     // expose the buffer
 void fujidisk_reset(void);
 unsigned char fujidisk_status(void);
 unsigned char fujidisk_set_block(unsigned long block);
-unsigned char fujidisk_recv_block(void);
+unsigned int fujidisk_recv_block(void);
 
 
 #endif

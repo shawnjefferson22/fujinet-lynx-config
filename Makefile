@@ -44,8 +44,8 @@ $(OUTPUT).lnx: $(OBJECTS)
 
 ifdef HEADER_FIX
 	# Fix the LNX file header to tell the GameDrive Loader we want to use EEPROM
-	# \101 is octal for 0x41
-	printf '\101' | dd of="lynxcfg.lnx" bs=1 seek=60 count=1 conv=notrunc
+	# \100 is octal for 0x40
+	printf '\100' | dd of="lynxcfg.lnx" bs=1 seek=60 count=1 conv=notrunc
 endif
 
 %.o: %.c

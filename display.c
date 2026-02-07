@@ -125,6 +125,11 @@ void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t 
   tgi_lineto(x1, y2);				        // bottom line
   tgi_lineto(x1, y1+4);				      // left line
 
+  tgi_line(x1+1, y1+3, x2-1, y1+3);     
+  tgi_lineto(x2-1, y2-1);				    // right line
+  tgi_lineto(x1+1, y2-1);				    // bottom line
+  tgi_lineto(x1+1, y1+3);				    // left line
+
   // draw text title and prompt if passed in
     tgi_setcolor(TGI_COLOR_WHITE);
   if (title)
@@ -198,21 +203,21 @@ void display_adapter_config(void)
   }
   else {
     sprintf(s, "SSID: %-13.13s", fncfg.ssid);
-    tgi_outtextxy(2, 17, s);
+    tgi_outtextxy(3, 17, s);
     sprintf(s, "HN: %-16.16s", fncfg.hostname);
-    tgi_outtextxy(2, 25, s);
+    tgi_outtextxy(3, 25, s);
     sprintf(s, "IP: %d.%d.%d.%d", fncfg.localIP[0], fncfg.localIP[1], fncfg.localIP[2], fncfg.localIP[3]);
-    tgi_outtextxy(2, 33, s);
+    tgi_outtextxy(3, 33, s);
     sprintf(s, "GW: %d.%d.%d.%d", fncfg.gateway[0], fncfg.gateway[1], fncfg.gateway[2], fncfg.gateway[3]);
-    tgi_outtextxy(2, 41, s);
+    tgi_outtextxy(3, 41, s);
     sprintf(s, "NM: %d.%d.%d.%d", fncfg.netmask[0], fncfg.netmask[1], fncfg.netmask[2], fncfg.netmask[3]);
-    tgi_outtextxy(2, 49, s);
+    tgi_outtextxy(3, 49, s);
     sprintf(s, "DNS: %d.%d.%d.%d", fncfg.dnsIP[0], fncfg.dnsIP[1], fncfg.dnsIP[2], fncfg.dnsIP[3]);
-    tgi_outtextxy(2, 57, s);
+    tgi_outtextxy(3, 57, s);
     sprintf(s, "MAC: %02X%02X%02X%02X%02X%02X", fncfg.macAddress[0], fncfg.macAddress[1], fncfg.macAddress[2], fncfg.macAddress[3], fncfg.macAddress[4], fncfg.macAddress[5]);
-    tgi_outtextxy(2, 66, s);
+    tgi_outtextxy(3, 66, s);
     sprintf(s, "VER: %s", fncfg.fn_version);
-    tgi_outtextxy(2, 75, s);
+    tgi_outtextxy(3, 75, s);
   }
 
   // wait for some keypress
@@ -267,6 +272,12 @@ void scroll_file_entry(unsigned char sel, unsigned char st)
   tgi_outtextxy(4, (sel*8)+8, s);
   tgi_setbgcolor(TGI_COLOR_BLACK);
   return;
+}
+
+
+void display_file_action(char *c)
+{
+  tgi_outtextxy(150, 92, c);
 }
 
 

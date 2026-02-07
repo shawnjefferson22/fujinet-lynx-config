@@ -25,8 +25,9 @@
 #include "Program.h"
 
 
-#define ADAPTERCFG_KEY  'P'
-#define SCANWIFI_KEY    '2'
+#define ADAPTERCFG_KEY    'P'
+#define SCANWIFI_KEY      '2'
+#define FILEINFO_KEY      '1'
 
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
@@ -49,7 +50,7 @@ RESCAN:
 
   draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "Wifi networks", NULL);
   print_key_legend("A=Select B=Rescan");
-  tgi_outtextxy(1, 8, "Scanning wifi...");
+  tgi_outtextxy(3, 8, "Scanning wifi...");
   n = fujinet_scan_networks();
   if (n > 12) n = 9;           // cap to 9 networks
 
@@ -81,7 +82,7 @@ RESCAN:
         tgi_setbgcolor(TGI_COLOR_GREEN);
 
       sprintf(s, "%-18.18s", networks[i].ssid);
-      tgi_outtextxy(1, (i*8)+8, s);
+      tgi_outtextxy(3, (i*8)+8, s);
       display_wifi_sprite((i*8)+8, networks[i].rssi);
 
       tgi_setbgcolor(TGI_COLOR_BLACK);
@@ -295,10 +296,13 @@ void open_dir(void)
 }
 
 
-unsigned char read_full_dir_entry(unsigned int pos, char *entry)
+/*
+ *  Pass 0 to get dir entry without extended info, 0x80 for extended info
+ *
+ */
+unsigned char read_full_dir_entry(unsigned int pos, char *entry, unsigned char ext)
 {
   unsigned char r;
-
 
   r = fujinet_set_directory_position(pos);		// set directory position to entry
   if (!r) {
@@ -306,7 +310,7 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
     return(0);
   }
 
-  r = fujinet_read_directory_entry(128, 0, entry);  // read full directory name
+  r = fujinet_read_directory_entry(128, ext, entry);  // read full directory name
   if (!r) {
     display_error_and_wait("Error reading dir!");
     return(0);
@@ -316,12 +320,89 @@ unsigned char read_full_dir_entry(unsigned int pos, char *entry)
 }
 
 
+// show_file_info
+void show_ext_file_info(unsigned char dirpos)
+{
+	unsigned char r;
+	unsigned char i, y;
+	unsigned char len;
+	FILE_INFO_EXT *entry;
+	char str[20];
+
+
+	// get the size of the file
+	r = fujinet_set_directory_position(dirpos);					// set directory position to entry
+	if (!r) {
+		display_error_and_wait("Error set dir pos!");
+		return;
+	}
+
+	r = fujinet_read_directory_entry(128, 0x80, &dskbuf[0]);		// get dir entry with extra info
+	if (!r) {
+		display_error_and_wait("Error reading entry!");
+		return;
+	}
+	entry = (FILE_INFO_EXT *) &dskbuf[0];
+
+ 	// Display the file info
+ 	tgi_clear();
+  draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "File Info", NULL);
+
+	// 01234567890123456789
+	//0FilenameFilenameFile
+	//1FilenameFilenameFile
+	//2filenameFilenameFile
+	//3filenameFilenameFile
+	//4filenameFilenameFile
+	//5
+	//6 Modtime:
+	//7  26/01/01 24:24:24
+	//8
+	//9 Size:
+	//0  1,234,567,890
+	//1
+	//2  DIR
+
+	// output long filename
+	len = strlen(entry->filename);    
+  if (entry->isdir) {
+    entry->filename[len] = '/';
+    entry->filename[len+1] = '\0';
+  }
+
+  y = 1;                                // y screen coord
+  str[19] = '\0';                       // make sure our output string is truncated
+	for(i=0; i<len; i=i+19) {
+		y += 8;
+    strncpy(str, &entry->filename[i], 19);
+		tgi_outtextxy(3, y, str); 
+  }
+
+  // output size
+  y += 16;
+	sprintf(s, "%ld", entry->size);
+	tgi_outtextxy(3, y, "Size:");
+  if (entry->isdir)
+    tgi_outtextxy(49, y, "n/a");
+  else
+	  tgi_outtextxy(49, y, s);
+
+	// output mod time
+  y += 16;
+	sprintf(s, "%02d/%02d/%02d %02d:%02d:%02d", entry->month, entry->day, entry->year, entry->hour, entry->min, entry->sec);
+	tgi_outtextxy(3, y, "Mod Time:");
+	tgi_outtextxy(3, y+8, s);
+	
+	wait_for_button();
+}
+
+
 // Get the file, display progress
 unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 {
   unsigned char r;
   unsigned long size;
-  unsigned int i, blocks;
+  unsigned int i, blocks, len;
 
 
   // get the size of the file
@@ -357,7 +438,19 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
 
   #ifdef SDCARD_GAMEDRIVE
-  strcpy(sd_dir, "/FUJINET/GAMEDRV1");
+    switch(blocks) {
+      case 513:
+        strcpy(sd_dir, "/FUJINET/GAMEDRV.128");
+        break;
+      case 1025:
+        strcpy(sd_dir, "/FUJINET/GAMEDRV.256");
+        break;
+      case 2049:
+        strcpy(sd_dir, "FUJINET/GAMEDRV.512");
+        break;
+      default:
+        strcpy(sd_dir, "/FUJINET/GAMEDRV1");
+    }
   #else
   strcat(sd_dir, extract_filename(filename));
   #endif
@@ -365,6 +458,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   tgi_outtextxy(1, 0, s);
 
   // Open file on SD card
+  display_file_action("o");
   r = sd_open_file(sd_dir);
   if (!r) {
 	    display_error_and_wait("Error SD open file!");
@@ -383,8 +477,11 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
       sd_close_file();
 	    return(0);
     }
-    r = fujidisk_recv_block();
-    if (!r) {
+    
+    display_file_action("r");
+    len = fujidisk_recv_block();
+    // len is zero, or len != BLOCK_SIZE on any block except last
+    if ((!len) || (len != BLOCK_SIZE && (i < (blocks-1)))) {
 	    display_error_and_wait("Error during receive!");
       fujinet_unmount_image(disk_slot);
       sd_close_file();
@@ -402,7 +499,8 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     }
 
 	  // Write the block to SD card file
-  	r = sd_write_file_block(BLOCK_SIZE, dskbuf);
+    display_file_action("w");
+  	r = sd_write_file_block(len, dskbuf);
   	if (!r) {
 	    display_error_and_wait("Error writing to SD file!");
       fujinet_unmount_image(disk_slot);
@@ -412,6 +510,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   }
 
   fujinet_unmount_image(disk_slot);
+  display_file_action("c");
   sd_close_file();
   return(1);
 }
@@ -429,7 +528,7 @@ void select_files(void)
 
 REDRAW:
   tgi_clear();
-  draw_box_with_text(0, 0, 159, 92, TGI_COLOR_BLUE, "Host Files", "A=Select B=Back");
+  draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Host Files", "A=Select B=Back");
 
   // Initialize and start at root directory
   sel = dirpos = 0;                       // reset selected host and dirpos
@@ -475,6 +574,9 @@ REDRAW:
         case SCANWIFI_KEY:
 		      r = select_wifi_network();
 		      return;							// return to hosts selection
+	      case FILEINFO_KEY:
+			    show_ext_file_info(dirpos+sel);
+			    goto REDRAW;
       }
     }
 
@@ -537,7 +639,7 @@ REDRAW:
     }
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
-      r = read_full_dir_entry(dirpos+sel, &entry[0]);
+      r = read_full_dir_entry(dirpos+sel, &entry[0], 0);
       if (!r) {
         display_error_and_wait("Error getting entry!");
         continue;
@@ -610,8 +712,11 @@ REDRAW:
 
       #ifdef SDCARD_GAMEDRIVE
       tgi_outtextxy(2,50, "Programming...");
-      if (LynxSD_Program(filename) == FR_OK) {
+      //tgi_outtextxy(2,58, sd_dir);
+      display_file_action("p");
+      if (LynxSD_Program(sd_dir) == FR_OK) {
         tgi_outtextxy(2, 58, "Launching...");
+        display_file_action("l");
         LaunchROM();
       }
       #else

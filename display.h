@@ -10,7 +10,7 @@
 #define DISPLAY_H
 
 
-#define SCROLL_DELAY  3000		       // delay speed for directory entry scrolling
+#define SCROLL_DELAY  2000		       // delay speed for directory entry scrolling
 
 extern char s[21];                     // buffer for text display
 extern char filenames[10][64];         // filename display (704 bytes), filenames capped to 64 bytes
@@ -27,6 +27,8 @@ void display_adapter_config(void);
 void display_hosts(unsigned char sel);
 void display_files(unsigned char sel);
 void scroll_file_entry(unsigned char sel, unsigned char st);
+
+void display_file_action(char *c);
 
 void display_file_data(void);
 
