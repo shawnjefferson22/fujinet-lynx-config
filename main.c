@@ -50,7 +50,8 @@ RESCAN:
 
   draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "Wifi networks", NULL);
   print_key_legend("A=Select B=Rescan");
-  tgi_outtextxy(3, 8, "Scanning wifi...");
+  tgi_outtextxy(3, 16, "Scanning wifi");
+  tgi_outtextxy(3, 24,"Please wait...");
   n = fujinet_scan_networks();
   if (n > 12) n = 9;           // cap to 9 networks
 
@@ -470,16 +471,9 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   for(i=0; i<blocks; ++i) {
     sprintf(s, "Block %i of %i", i+1, blocks);
     tgi_outtextxy(6, 17, s);
-    r = fujidisk_set_block(i);
-    if (!r) {
-	    display_error_and_wait("Error setting block!");
-      fujinet_unmount_image(disk_slot);
-      sd_close_file();
-	    return(0);
-    }
     
     display_file_action("r");
-    len = fujidisk_recv_block();
+    len = fujidisk_read_block(FUJI_DEVICEID_DISK, i);
     // len is zero, or len != BLOCK_SIZE on any block except last
     if ((!len) || (len != BLOCK_SIZE && (i < (blocks-1)))) {
 	    display_error_and_wait("Error during receive!");
@@ -500,7 +494,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 
 	  // Write the block to SD card file
     display_file_action("w");
-  	r = sd_write_file_block(len, dskbuf);
+  	r = sd_write_file_block(len, disk_block_buffer);
   	if (!r) {
 	    display_error_and_wait("Error writing to SD file!");
       fujinet_unmount_image(disk_slot);

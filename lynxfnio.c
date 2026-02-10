@@ -51,40 +51,6 @@ unsigned char fnio_done(void)
 }
 
 
-// send a reset packet, no payload
-void fnio_reset(unsigned char dev)
-{
-   // Send the reset command, no response is given
-  ser_put(MN_RESET | dev);
-  ser_get(&_r);     // get reflection
-}
-
-
-// send status packet, no payload
-unsigned char fnio_status(unsigned char dev, unsigned char *buf)
-{
-  unsigned char i;
-
-
-  // Send the status command, a response will be sent
-  ser_put(MN_STATUS | dev);
-  ser_get(&_r);      // get reflection
-
-  // get response
-  for (i=0; i<6; ++i) {
-    _serial_get_loop();
-    buf[i] = _r;
-  }
-
-  // checksum matches?
-  _checksum((char *) &buf[1], 4);
-  if (_ck == buf[5])
-    return(1);                      // return success
-  else
-    return(0);                      // return failure
-}
-
-
 /**
  * @brief calculates the checksum on the packet and stores in global var
  * @param *b pointer to buffer
@@ -117,7 +83,7 @@ void _serial_get_loop(void)
   while (ser_get(&_r) == SER_ERR_NO_DATA) {
     now = clock();
     if (((now - start) / CLOCKS_PER_SEC) > RECV_TIMEOUT) {
-      _r = NM_NACK;
+      _r = FUJICMD_NAK;
       break;
     }
   }
@@ -129,9 +95,9 @@ void _serial_get_loop(void)
  * @param dev The device # 0x00 - 0x0F
  * @param buf The buffer to send
  * @param len Length of buffer to send
- * @return nack (0xCx) or ack (0x9x)
+ * @return 1 on ACK, 0 on NAK
  */
-unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
+unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len)
 {
   register unsigned short i;
 
@@ -140,7 +106,7 @@ unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
   _checksum(buf, len);
 
   // Send the Device and Length
-  ser_put(MN_SEND | dev);
+  ser_put(dev);
   ser_put(len >> 8);
   ser_put(len & 0xFF);
   ser_get(&_r);           // get rid of reflected data
@@ -158,84 +124,66 @@ unsigned char fnio_send(unsigned char dev, char *buf, unsigned short len)
   ser_put(_ck);
   ser_get(&_r);           // get rid of reflected data
 
-  // Get rid of reflected data we just sent.
-  //for (i=0; i<(len+4); ++i)
-  //  ser_get(&_r);
-
   // Get response
   _serial_get_loop();
 
   // r contains our response, ACK or NACK
-  return _r;
-}
-
-
-// @brief tell the fujinet it's clear to send us data
-unsigned char fnio_cts(unsigned char dev)
-{
-  ser_put(MN_CLR | dev);
-  ser_get(&_r);			// get reflected data
-
-  // Get response byte.
-  _serial_get_loop();
-
-  if ((_r & 0xF0) == NM_SEND)
-	return(1);
+  if (_r == FUJICMD_ACK)
+    return(1);
   else
-	return(0);
+    return(0);
 }
 
 
-unsigned char fnio_recv(unsigned char dev, char *buf, unsigned short *len)
+unsigned char fnio_recv_buf(char *buf, unsigned short *len)
 {
   register unsigned short i;
 
 
-  // Tell the Fujinet we're ready to receive
-  ser_put(MN_RECEIVE | dev);
-  ser_get(&_r);							    // get reflected data
+  // Get first length byte
+  _serial_get_loop();
+  *len = _r << 8;
+  // Get second length byte
+  _serial_get_loop();
+  *len |= _r & 0xFF;
 
-  _serial_get_loop();						// get response
-  if ((_r & 0xF0) == NM_NACK)		// nothing to receive
-    return 0;							      // return failure
+  if (*len > LEN_MAX)       // no more than LEN_MAX bytes
+	  *len = LEN_MAX;
 
-  // We got a response, let's receive it
-  if (fnio_cts(dev)) {					// clear to send?
-      // Get first length byte
-      _serial_get_loop();
-      *len = _r << 8;
-      // Get second length byte
-      _serial_get_loop();
-      *len |= _r & 0xFF;
+  // Now get the payload
+  for (i=0; i<*len; ++i) {
+	  _serial_get_loop();
+   	buf[i] = _r;
+  }
 
-      if (*len > LEN_MAX)       // no more than LEN_MAX bytes
-	      *len = LEN_MAX;
+  // Get the checksum
+  _serial_get_loop();
 
-      // Now get the payload
-      for (i=0; i<*len; ++i) {
-	      _serial_get_loop();
-       	buf[i] = _r;
-      }
-
-      // Get the checksum
-      _serial_get_loop();
-
-      // checksum matches?
-      _checksum(buf, *len);
-      if (_r == _ck) {
-		    ser_put(MN_ACK | dev);								// ACK
-        ser_get((char *) &_r);                // get reflected data
-        return(1);                            // succes, checksum matches
-      }
-      else {
-		    ser_put(MN_NACK | dev);								// NACK, checksum bad
-        ser_get((char *) &_r);                // get reflected data
-		    *len = 0;											        // return zero length
-        return(0);                            // checksum bad
-  	  }
+  // checksum matches?
+  _checksum(buf, *len);
+  if (_r == _ck) {
+	  ser_put(FUJICMD_ACK);								  // ACK
+    ser_get((char *) &_r);                // get reflected data
+    return(1);                            // succes, checksum matches
   }
   else {
-    *len = 0;												          // zero bytes received
-    return(0);                                // didn't get the CTS
+	  ser_put(FUJICMD_NAK); 								// NACK, checksum bad
+    ser_get((char *) &_r);                // get reflected data
+	  *len = 0;											        // return zero length
+    return(0);                            // checksum bad
   }
+}
+
+
+// receive an ACK or NAK
+// returns 1 on ACK received or 0 on NAK
+// Call after commands that don't send back any data
+unsigned char fnio_recv_ack(void)
+{
+  
+  _serial_get_loop();
+  if (_r == FUJICMD_ACK)
+    return(1);
+  else
+    return(0); 
 }

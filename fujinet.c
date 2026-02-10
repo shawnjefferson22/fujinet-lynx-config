@@ -37,15 +37,25 @@ unsigned char _send_cmd(unsigned int l)
 {
   unsigned char r, i;
 
+  // send the command, retry if needed
   i = 0;
   while (i < FN_RETRIES) {
-    r = fnio_send(FN_DEV, &fn_cmd[0], l);
-    if ((r & 0xF0) == NM_ACK)
-      return(1);
+    r = fnio_send_buf(FUJI_DEVICEID_FUJINET, &fn_cmd[0], l);
+    if (r)
+      break;
     i++;
   }
+  
+  // failed all retries
+  if (!r)
+    return(0);
 
-  return(0);
+  // wait for succesful completion of command
+  r = fnio_recv_ack();
+  if (r)
+    return(1);
+  else
+    return(0);
 }
 
 
@@ -58,15 +68,15 @@ unsigned char _send_cmd_and_recv_buf(unsigned int l, char *buf)
 
   i = 0;
   while (i < FN_RETRIES) {
-    r = fnio_send(FN_DEV, &fn_cmd[0], l);
-    if ((r & 0xF0) == NM_ACK)
+    r = fnio_send_buf(FUJI_DEVICEID_FUJINET, &fn_cmd[0], l);
+    if (r)
       break;
     i++;
   }
 
   // get response
-  r = fnio_recv(FN_DEV, buf, &fn_len);
-  if ((fn_len !=0) && (r))      // did we receive anything?
+  r = fnio_recv_buf(buf, &fn_len);
+  if ((fn_len != 0) && (r))     // did we receive anything?
     return(1);                  // return success
   else
     return(0);                  // return failure
@@ -94,16 +104,37 @@ unsigned char fujinet_get_wifi_status(void)
 
 unsigned char fujinet_scan_networks(void)
 {
-  unsigned char r;
+  unsigned char r, i;
   char num;
 
   fn_cmd[0] = FUJICMD_SCAN_NETWORKS;
 
-  r = _send_cmd_and_recv_buf(1, &num);
-  if (r)
-    return(num);
+  //r = _send_cmd_and_recv_buf(1, &num);
 
-  return(0);    // something went wrong no networks
+  i = 0;
+  while (i < FN_RETRIES) {
+    r = fnio_send_buf(FUJI_DEVICEID_FUJINET, &fn_cmd[0], 1);
+    if (r)
+      break;
+    i++;
+  }
+
+  sleep(2);
+
+  // get response
+  r = fnio_recv_buf(&num, &fn_len);
+  if ((fn_len != 0) && (r))     // did we receive anything?
+    return(num);                // return success
+  else
+    return(0);                  // return failure
+
+
+
+
+  //if (r)
+  //  return(num);
+
+  //return(0);    // something went wrong no networks
 }
 
 

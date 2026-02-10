@@ -23,71 +23,50 @@
 #include "fujidisk.h"
 
 
-#define FN_RETRIES  3       // number of retries for commands
+#define FN_RETRIES  3                     // number of retries for commands
 
-unsigned short fd_len;      // length returned
-char dskbuf[BLOCK_SIZE];    // buffer to use for disk
+unsigned short fd_len;                    // length returned
+char dskbuf[BLOCK_SIZE+5];                // buffer to use for disk
+char *disk_block_buffer = &dskbuf[5];     // pointer to disk block data
 
-
-
-void fujidisk_reset(void)
-{
-  fnio_reset(DISK_DEV);
-  return;
-}
-
-// Currently broken?
-unsigned char fujidisk_status(void)
-{
-  unsigned char r;
-  FUJI_IO_STATUS st;
-
-
-  // ask for status
-  r = fnio_status(DISK_DEV, (unsigned char *) &st);
-  if (r)
-    return(st.status);                      // return status
-  else
-    return(STATUS_NO_DRIVE);                // return no drive
-}
 
 
 // Set the block we are reading or writing
-unsigned char fujidisk_set_block(unsigned long block)
+void _fujidisk_set_block(unsigned long block)
 {
-  unsigned char r, i;
-
-
-  dskbuf[0] = (unsigned char) (block & 0xFF);
-  dskbuf[1] = (unsigned char) ((block & 0xFF00UL) >> 8);
-  dskbuf[2] = (unsigned char) ((block & 0xFF0000UL) >> 16);
-  dskbuf[3] = (unsigned char) ((block & 0xFF000000UL) >> 24);
-  dskbuf[4] = 0;            // reserved byte
-
-  for(i=0; i<FN_RETRIES; ++i) {
-    r = fnio_send(DISK_DEV, &dskbuf[0], 5);
-    if (r) break;
-  }
-
-  if (!r)
-    return(0);
-  else
-    return(1);
+  dskbuf[1] = (unsigned char) (block & 0xFF);
+  dskbuf[2] = (unsigned char) ((block & 0xFF00UL) >> 8);
+  dskbuf[3] = (unsigned char) ((block & 0xFF0000UL) >> 16);
+  dskbuf[4] = (unsigned char) ((block & 0xFF000000UL) >> 24);
 }
 
 
 // Receive the disk sector/block
-unsigned int fujidisk_recv_block(void)
+unsigned int fujidisk_read_block(unsigned char dev, unsigned long block)
 {
   unsigned char r, i;
 
-  // clear the disk buffer FIXME
-  memset(dskbuf, 0x00, BLOCK_SIZE);
+  // clear the disk buffer since we may get a partial block
+  memset(dskbuf, 0x00, sizeof(dskbuf));
 
+  // set device and command
+  dskbuf[0] = FUJICMD_READ;
+  _fujidisk_set_block(block);
+
+  // send command
   for(i=0; i<FN_RETRIES; ++i) {
-    r = fnio_recv(DISK_DEV, &dskbuf[0], &fd_len);
+    r = fnio_send_buf(dev, &dskbuf[0], 5);
     if (r) break;
   }
+  // failed retries
+  if (!r)
+    return(0);
+
+  // receive disk block
+  //for(i=0; i<FN_RETRIES; ++i) {
+  r = fnio_recv_buf(disk_block_buffer, &fd_len);
+  //if (r) break;
+  //}
 
   // typically a disk "block" will be 256 bytes, but the last block may be partial as
   // not all files on the Lynx are divisble by 256 bytes.  Return the true number of
@@ -101,3 +80,30 @@ unsigned int fujidisk_recv_block(void)
 }
 
 
+// Write the disk sector/block
+// Data is expected to be a disk_block_buffer already
+unsigned char fujidisk_write_block(unsigned char dev, unsigned long block)
+{
+  unsigned char r, i;
+  
+  
+  // set device and command
+  dskbuf[0] = FUJICMD_WRITE;
+  _fujidisk_set_block(block);
+  
+  // send command
+  for(i=0; i<FN_RETRIES; ++i) {
+    r = fnio_send_buf(dev, &dskbuf[0], sizeof(dskbuf));
+    if (r) break;
+  }
+  // failed retries
+  if (!r)
+    return(0);
+
+  // wait for command completion/success
+  r = fnio_recv_ack();
+  if (r)
+    return(1);
+  else
+    return(0);
+}
