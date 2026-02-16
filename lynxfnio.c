@@ -20,12 +20,12 @@
 #include "lynxfnio.h"
 
 
-#define RECV_TIMEOUT  3   // timeout for receive loop, in seconds
+#define RECV_TIMEOUT  10   // timeout for receive loop, in seconds
 
 // Global variables
-unsigned char _ck;			  // checksum byte
-char _r;                  // response/data from FN
-
+unsigned char _ck;			// checksum byte
+char _r;               		// response/data from FN
+unsigned char _fn_error;	// error status
 
 
 unsigned char fnio_init(void)
@@ -75,7 +75,7 @@ void _checksum(char *b, unsigned short len)
  * @brief loop to get data that is used many times
  * @param b The buffer to receive into
  */
-void _serial_get_loop(void)
+unsigned char _serial_get_loop(void)
 {
   clock_t start, now;
 
@@ -83,10 +83,19 @@ void _serial_get_loop(void)
   while (ser_get(&_r) == SER_ERR_NO_DATA) {
     now = clock();
     if (((now - start) / CLOCKS_PER_SEC) > RECV_TIMEOUT) {
-      _r = FUJICMD_NAK;
-      break;
+      //_r = FUJICMD_NAK;
+      _fn_error = FNIO_ERR_TIMEOUT;
+      return(0);
     }
   }
+
+  return(1);
+}
+
+
+void fnio_flush_recv(void)
+{
+  while (ser_get(&_r) != SER_ERR_NO_DATA);
 }
 
 
@@ -100,7 +109,11 @@ void _serial_get_loop(void)
 unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len)
 {
   register unsigned short i;
+  unsigned char ret;
 
+
+  // reset error status
+  _fn_error = FNIO_ERR_NONE;
 
   // Calculate checksum on buffer
   _checksum(buf, len);
@@ -125,26 +138,39 @@ unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len)
   ser_get(&_r);           // get rid of reflected data
 
   // Get response
-  _serial_get_loop();
+  ret = _serial_get_loop();
+  if (!ret)
+	  return(0);
 
   // r contains our response, ACK or NACK
   if (_r == FUJICMD_ACK)
     return(1);
-  else
+  else {
+	_fn_error = FNIO_ERR_SEND_CHK;
     return(0);
+	}
 }
 
 
 unsigned char fnio_recv_buf(char *buf, unsigned short *len)
 {
   register unsigned short i;
+  unsigned char t;
 
+
+  // reset error status
+  _fn_error = FNIO_ERR_NONE;
 
   // Get first length byte
-  _serial_get_loop();
+  t = _serial_get_loop();
+  if (!t)
+	return(0);
   *len = _r << 8;
+
   // Get second length byte
-  _serial_get_loop();
+  t = _serial_get_loop();
+  if (!t)
+  	return(0);
   *len |= _r & 0xFF;
 
   if (*len > LEN_MAX)       // no more than LEN_MAX bytes
@@ -152,12 +178,16 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
 
   // Now get the payload
   for (i=0; i<*len; ++i) {
-	  _serial_get_loop();
+	  t = _serial_get_loop();
+	  if (!t)
+	  	return(0);
    	buf[i] = _r;
   }
 
   // Get the checksum
-  _serial_get_loop();
+  t = _serial_get_loop();
+  if (!t)
+  	return(0);
 
   // checksum matches?
   _checksum(buf, *len);
@@ -167,6 +197,7 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
     return(1);                            // succes, checksum matches
   }
   else {
+	  _fn_error = FNIO_ERR_RECV_CHK;
 	  ser_put(FUJICMD_NAK); 								// NACK, checksum bad
     ser_get((char *) &_r);                // get reflected data
 	  *len = 0;											        // return zero length
@@ -180,10 +211,26 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
 // Call after commands that don't send back any data
 unsigned char fnio_recv_ack(void)
 {
-  
-  _serial_get_loop();
+	unsigned char t;
+
+  // reset error status
+  _fn_error = FNIO_ERR_NONE;
+
+  t = _serial_get_loop();
+  if (!t)
+  	return(0);
+
   if (_r == FUJICMD_ACK)
     return(1);
-  else
-    return(0); 
+  else {
+	  _fn_error = FNIO_ERR_GENERAL;
+    fnio_flush_recv();
+    return(0);
+	}
+}
+
+
+unsigned char fnio_error()
+{
+  return(_fn_error);
 }

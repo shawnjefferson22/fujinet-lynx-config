@@ -10,7 +10,8 @@
 #define INPUT_H
 
 
-void wait_for_button(void);
+//void wait_for_button(void);
+void wait_for_any_key(void);
 unsigned char check_keypress(void);
 unsigned char check_joy_and_keys(unsigned char *joy);
 

@@ -66,19 +66,27 @@ void _insert_char(char *s, unsigned char i)
 }
 
 
-// waits for either button A or B to be pressed
-void wait_for_button(void)
+// waits for any key (buttons, opt1, opt2, pause, etc)
+void wait_for_any_key(void)
 {
-  unsigned int joy;
-
+  unsigned char joy;
 
   while (1) {
     joy = joy_read(0);
-    if (JOY_BTN_1(joy) || JOY_BTN_2(joy))
+    if (JOY_BTN_1(joy) || JOY_BTN_2(joy)) {
+      while (joy_read(0) == joy);     // debounce joystick
       break;
+    }
+
+    if (kbhit()) {
+      while (kbhit()) {               // debounce key
+        cgetc();
+      }
+      break;
+    }
   }
-  while (joy_read(0) == joy);     // debounce
 }
+
 
 
 /* check_joy_and_keys

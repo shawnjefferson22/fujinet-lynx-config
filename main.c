@@ -345,9 +345,13 @@ void show_ext_file_info(unsigned char dirpos)
 	}
 	entry = (FILE_INFO_EXT *) &dskbuf[0];
 
- 	// Display the file info
- 	tgi_clear();
-  draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "File Info", NULL);
+ 	// Display the title
+  tgi_clear();
+  if (entry->isdir)
+    strcpy(str, "Dir Info");
+  else
+    strcpy(str, "File Info");
+  draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, str, NULL);
 
 	// 01234567890123456789
 	//0FilenameFilenameFile
@@ -362,14 +366,10 @@ void show_ext_file_info(unsigned char dirpos)
 	//9 Size:
 	//0  1,234,567,890
 	//1
-	//2  DIR
+	//2
 
 	// output long filename
 	len = strlen(entry->filename);    
-  if (entry->isdir) {
-    entry->filename[len] = '/';
-    entry->filename[len+1] = '\0';
-  }
 
   y = 1;                                // y screen coord
   str[19] = '\0';                       // make sure our output string is truncated
@@ -379,14 +379,13 @@ void show_ext_file_info(unsigned char dirpos)
 		tgi_outtextxy(3, y, str); 
   }
 
-  // output size
-  y += 16;
-	sprintf(s, "%ld", entry->size);
-	tgi_outtextxy(3, y, "Size:");
-  if (entry->isdir)
-    tgi_outtextxy(49, y, "n/a");
-  else
+  // output size if not a directory
+	if (!entry->isdir) {
+    y += 16;
+    sprintf(s, "%ld", entry->size);
+	  tgi_outtextxy(3, y, "Size:");
 	  tgi_outtextxy(49, y, s);
+  }
 
 	// output mod time
   y += 16;
@@ -394,7 +393,7 @@ void show_ext_file_info(unsigned char dirpos)
 	tgi_outtextxy(3, y, "Mod Time:");
 	tgi_outtextxy(3, y+8, s);
 	
-	wait_for_button();
+	wait_for_any_key();
 }
 
 

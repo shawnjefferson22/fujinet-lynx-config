@@ -45,7 +45,7 @@ unsigned char _send_cmd(unsigned int l)
       break;
     i++;
   }
-  
+
   // failed all retries
   if (!r)
     return(0);
@@ -74,6 +74,10 @@ unsigned char _send_cmd_and_recv_buf(unsigned int l, char *buf)
     i++;
   }
 
+ // failed all retries
+  if (!r)
+    return(0);
+
   // get response
   r = fnio_recv_buf(buf, &fn_len);
   if ((fn_len != 0) && (r))     // did we receive anything?
@@ -89,13 +93,13 @@ unsigned char fujinet_get_wifi_status(void)
   char status;
 
   fn_cmd[0] = FUJICMD_GET_WIFISTATUS;
-
   r = _send_cmd_and_recv_buf(1, &status);
+
   if (r) {
     if (status == 3)     // status of 3 is connected, 6 is disconnected
       return(1);
-    else
-      return(0);
+
+    return(0);
   }
 
   return(0);    // something went wrong, return not connected
@@ -108,33 +112,12 @@ unsigned char fujinet_scan_networks(void)
   char num;
 
   fn_cmd[0] = FUJICMD_SCAN_NETWORKS;
+  r = _send_cmd_and_recv_buf(1, &num);
 
-  //r = _send_cmd_and_recv_buf(1, &num);
-
-  i = 0;
-  while (i < FN_RETRIES) {
-    r = fnio_send_buf(FUJI_DEVICEID_FUJINET, &fn_cmd[0], 1);
-    if (r)
-      break;
-    i++;
-  }
-
-  sleep(2);
-
-  // get response
-  r = fnio_recv_buf(&num, &fn_len);
-  if ((fn_len != 0) && (r))     // did we receive anything?
-    return(num);                // return success
+  if (r)
+    return(num);
   else
-    return(0);                  // return failure
-
-
-
-
-  //if (r)
-  //  return(num);
-
-  //return(0);    // something went wrong no networks
+  	return(0);    // something went wrong no networks
 }
 
 
@@ -419,6 +402,20 @@ unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots)
   memcpy(&fn_cmd[1], slots, (sizeof(FN_DISK_SLOT)*MAX_DISK_SLOTS));
 
   r = _send_cmd((sizeof(FN_DISK_SLOT)*MAX_DISK_SLOTS)+1);
+  if (r)
+    return(1);
+
+  return(0);    // something went wrong
+}
+
+
+unsigned char fujinet_get_time(FN_TIME *datetime)
+{
+  unsigned char r;
+
+  fn_cmd[0] = FUJICMD_GET_TIME;
+
+  r = _send_cmd_and_recv_buf(sizeof(FN_TIME), (char *) datetime);
   if (r)
     return(1);
 

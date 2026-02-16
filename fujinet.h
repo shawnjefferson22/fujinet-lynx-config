@@ -289,6 +289,16 @@ typedef struct
 	char filename[117];             // 116 + room for '/' to denote directory
 } FILE_INFO_EXT;
 
+typedef struct
+{
+ unsigned char day;
+ unsigned char mon;
+ unsigned char year;
+ unsigned char hour;
+ unsigned char min;
+ unsigned char sec;
+} FN_TIME;
+
 
 // Static data structures
 extern FN_SSID_DETAIL wifi;
@@ -323,5 +333,7 @@ unsigned char fujinet_unmount_image(unsigned char ds);
 unsigned char fujinet_mount_all(void);
 unsigned char fujinet_read_device_slots(FN_DISK_SLOT *slots);
 unsigned char fujinet_write_device_slots(FN_DISK_SLOT *slots);
+unsigned char fujinet_get_time(FN_TIME *datetime);
+
 
 #endif /* FUJINET_H */

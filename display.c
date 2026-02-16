@@ -184,7 +184,7 @@ void print_error(char *msg)
 void display_error_and_wait(char *msg)
 {
   print_error(msg);
-  wait_for_button();
+  wait_for_any_key();
   clear_error_line();
 }
 
@@ -192,6 +192,8 @@ void display_error_and_wait(char *msg)
 void display_adapter_config(void)
 {
   unsigned char r, j;
+  unsigned long now;
+  FN_TIME dt;
 
 
   tgi_clear();
@@ -221,7 +223,18 @@ void display_adapter_config(void)
   }
 
   // wait for some keypress
+  now = clock() - (CLOCKS_PER_SEC*1);
   do {
+    // update clock every second
+    if (((clock() - now) / CLOCKS_PER_SEC) >= 1) {
+      r = fujinet_get_time(&dt);
+      if (r) {
+        sprintf(s, "%02d/%02d/%02d %02d:%02d:%02d", dt.mon, dt.day, dt.year, dt.hour, dt.min, dt.sec);
+        tgi_outtextxy(11, 90, s);
+      }
+      now = clock();
+    }
+
     r = check_joy_and_keys(&j);
   } while (!r && !j);
 }
@@ -294,5 +307,5 @@ void display_file_data(void)
     }
   }
 
-  wait_for_button();
+  wait_for_any_key();
 }
