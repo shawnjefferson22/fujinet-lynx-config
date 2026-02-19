@@ -187,7 +187,7 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
   // Get the checksum
   t = _serial_get_loop();
   if (!t)
-  	return(0);
+  	return(0);                            // timeout
 
   // checksum matches?
   _checksum(buf, *len);
