@@ -44,18 +44,21 @@ unsigned char select_wifi_network(void)
   unsigned char joy;
   char password[MAX_WIFI_PASS_LEN];
 
+#define SCAN_X  22
+#define SCAN_Y  30
 
 RESCAN:
   tgi_clear();
-
-  draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "Wifi networks", NULL);
-  print_key_legend("A=Select B=Rescan");
-  tgi_outtextxy(3, 16, "Scanning wifi");
-  tgi_outtextxy(3, 24,"Please wait...");
+  
+  draw_box_with_text(SCAN_X, SCAN_Y, SCAN_X+116, SCAN_Y+32, TGI_COLOR_RED, NULL, NULL);
+  tgi_outtextxy(SCAN_X+3, SCAN_Y+9, "Scanning wifi");
+  tgi_outtextxy(SCAN_X+3, SCAN_Y+19, "Please wait...");
   n = fujinet_scan_networks();
   if (n > 12) n = 9;           // cap to 9 networks
 
-  sleep(2);
+  tgi_clear();
+  draw_box_with_text(0, 0, 159, 97, TGI_COLOR_BLUE, "Wifi networks", NULL);
+  print_key_legend("A=Select B=Rescan");
 
   // Get the wifi scan data
   for (i=0; i<n; ++i) {
