@@ -24,7 +24,7 @@ OPT1+OPT2: clear the text entry
 
 Wifi Scan and Selection Screen:
 -------------------------------
-The fujinet will start a scan for wifi networks, which can take 5-10 seconds.  When complete, the top nine of the detected Wifi network is displayed, with highest strength networks topmost.
+Pressing OPT2 will start a scan for wifi networks, which can take 5-10 seconds.  When complete, the top nine of the detected Wifi network is displayed, with highest strength networks topmost.
 
 Joypad moves up and down the list.
 A button: selects this wifi network (you'll be prompted to enter a password if required).
