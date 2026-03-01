@@ -522,16 +522,16 @@ void select_files(void)
   char entry[129];
 
 
-REDRAW:
-  tgi_clear();
-  draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Host Files", "A=Select B=Back");
-
-  // Initialize and start at root directory
+ // Initialize and start at root directory
   sel = dirpos = 0;                       // reset selected host and dirpos
   memset(dirpath, 0, 256);                // clear the dirpath
   strcpy(dirpath, "/");                   // start at root
   open_dir();
   get_dir_entries();
+
+REDRAW:
+  tgi_clear();
+  draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Host Files", "A=Select B=Back");
 
   // input loop
   while(1) {
@@ -708,7 +708,6 @@ REDRAW:
 
       #ifdef SDCARD_GAMEDRIVE
       tgi_outtextxy(2,50, "Programming...");
-      //tgi_outtextxy(2,58, sd_dir);
       display_file_action("p");
       if (LynxSD_Program(sd_dir) == FR_OK) {
         tgi_outtextxy(2, 58, "Launching...");
