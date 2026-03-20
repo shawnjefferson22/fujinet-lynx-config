@@ -18,10 +18,10 @@ char input_chars[] = {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ12345
 
 
 // Finds the passed in character in the input_char array and returns the index, or 0
-unsigned char _find_char(unsigned char c)
+uint8_t _find_char(uint8_t c)
 {
-  unsigned char i;
-  unsigned char len;
+  uint8_t i;
+  uint8_t len;
 
   len = strlen(input_chars);
   for(i=0; i<len; ++i) {
@@ -34,10 +34,10 @@ unsigned char _find_char(unsigned char c)
 
 
 // removes a character from the string at position i
-void _remove_char(char *s, unsigned char i)
+void _remove_char(char *s, uint8_t i)
 {
-  unsigned char n;
-  unsigned char max;
+  uint8_t n;
+  uint8_t max;
 
 
   max = strlen(s);
@@ -50,9 +50,9 @@ void _remove_char(char *s, unsigned char i)
 }
 
 
-void _insert_char(char *s, unsigned char i)
+void _insert_char(char *s, uint8_t i)
 {
-    unsigned char len;
+    uint8_t len;
   
 
   len = strlen(s);
@@ -69,7 +69,7 @@ void _insert_char(char *s, unsigned char i)
 // waits for any key (buttons, opt1, opt2, pause, etc)
 void wait_for_any_key(void)
 {
-  unsigned char joy;
+  uint8_t joy;
 
   while (1) {
     joy = joy_read(0);
@@ -88,7 +88,6 @@ void wait_for_any_key(void)
 }
 
 
-
 /* check_joy_and_keys
  *
  * Joystick and key check, doing debounce for joystick and keys
@@ -105,9 +104,9 @@ void wait_for_any_key(void)
  * Opt1+Pause = Restart (R)
  * Opt2+Pause = Flip screen (F)
  */
-unsigned char check_joy_and_keys(unsigned char *joy)
+uint8_t check_joy_and_keys(uint8_t *joy)
 {
-  unsigned char c;
+  uint8_t c;
 
 
   // keys input
@@ -125,6 +124,36 @@ unsigned char check_joy_and_keys(unsigned char *joy)
   }
 }
 
+
+uint8_t check_joy_and_keys_loop(uint8_t *joy)
+{
+  uint8_t r;
+ 
+  do {
+    r = check_joy_and_keys(joy);
+  } while (!r && !joy);
+
+  return(r);
+}
+
+
+void debounce_joy_and_keys(void)
+{
+  uint8_t joy;
+
+  // debounce keys
+  while(kbhit()) {
+    cgetc();
+  }
+
+  // debounce joystick
+  joy = joy_read(0);
+  if (joy) {
+    while (joy_read(0) == joy);     // debounce joystick
+  }
+
+  return;
+}
 
 /* get_input
  *
@@ -166,17 +195,15 @@ uint8_t get_input(uint8_t x, uint8_t y, uint8_t max, char *input)
 
     // erase the cursor below the whole area
     tgi_setcolor(TGI_COLOR_BLACK);
-    tgi_bar(x, y+7, x + (max * 8), y+8);
+    tgi_bar(x, y+8, x + (max * 8), y+9);
 
     // display cursor below character
     tgi_setcolor(TGI_COLOR_GREEN);
-    tgi_bar((i*8)+x, y+7, (i*8)+8+x, y+8);	// draw underline cursor
+    tgi_bar((i*8)+x, y+8, (i*8)+8+x, y+9);	// draw underline cursor
     tgi_setcolor(TGI_COLOR_WHITE);
 
-    do {
-      c = check_joy_and_keys(&joy);
-    } while (!c && !joy);
-
+    c = check_joy_and_keys_loop(&joy);
+   
     // Get the current string length
     len = strlen(input);
 
@@ -287,4 +314,29 @@ uint8_t get_input_with_title(uint8_t y, uint8_t max, char *title, char *input)
   r = get_input(2, y+8, max, input);
 
   return(r);
+}
+
+
+uint8_t ask_yesno_download(uint8_t y)
+{
+  uint8_t joy;
+
+
+  draw_box_with_text(11, y, 149, y+48, TGI_COLOR_RED, "Download?", "A=YES B=NO");
+                       //1234567890123467890
+  tgi_outtextxy(15, y+8,  "Not a known Lynx");
+  tgi_outtextxy(15, y+16, "file extension!");
+  tgi_outtextxy(15, y+32, "Proceed anyway?");
+
+  do {
+    joy = joy_read(0);
+    if (joy) {
+      while (joy_read(0) == joy);     // debounce joystick
+    }
+
+    if (JOY_BTN_1(joy))
+      return(1);
+    if (JOY_BTN_2(joy))
+      return(0);
+  } while(1);
 }

@@ -28,6 +28,7 @@
 #define ADAPTERCFG_KEY    'P'
 #define SCANWIFI_KEY      '2'
 #define FILEINFO_KEY      '1'
+#define REFRESH_KEY       '1'
 
 
 FN_SSID_DETAIL networks[10];    // ssid display (340 bytes)
@@ -92,9 +93,10 @@ RESCAN:
       tgi_setbgcolor(TGI_COLOR_BLACK);
     }
 
-    do {
+    r = check_joy_and_keys_loop(&joy);
+    /*do {
       r = check_joy_and_keys(&joy);
-    } while (!r && !joy);
+    } while (!r && !joy);*/
 
     if (r == SCANWIFI_KEY) {						// Opt2 exits
       return(0);
@@ -207,12 +209,16 @@ REDRAW:
   while (1) {
     display_hosts(sel);
 
-    do {
+    r = check_joy_and_keys_loop(&joy);
+    /*do {
       r = check_joy_and_keys(&joy);
-    } while (!r && !joy);
+    } while (!r && !joy);*/
 
     if (r) {
       switch(r) {
+        case REFRESH_KEY:
+          read_hosts();
+          goto REDRAW;
         case ADAPTERCFG_KEY:
           display_adapter_config();
           goto REDRAW;
@@ -425,10 +431,22 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
   size += (unsigned long) dskbuf[8] << 16;
   size += (unsigned long) dskbuf[9] << 24;
 
+  // size sanity check
+  if (size > 524288U)      // truncate size to 512k (no lynx carts larger than this?)
+    size = 524288U;
+
   // calculate blocks to download
   blocks = size / BLOCK_SIZE;
   if (size % BLOCK_SIZE)        // last block may be partial
     blocks++;
+
+  // If not a Lynx filetype, ask user if they really want to download this?
+  if (lynx_filetype(&filename[0]) == FILETYPE_NONE) {
+    tgi_clear();
+    r = ask_yesno_download(8);
+    if (!r)
+      return(0);
+  }
 
   // mount the disk image in device slot
   r = fujinet_mount_image(disk_slot, DISK_ACCESS_MODE_READ);

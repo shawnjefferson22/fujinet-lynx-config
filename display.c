@@ -120,15 +120,17 @@ void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t 
 
   // draw box, offsetting slightly for text
   tgi_setcolor(color);
-  tgi_line(x1, y1+4, x2, y1+4);     // top line
-  tgi_lineto(x2, y2);				        // right line
-  tgi_lineto(x1, y2);				        // bottom line
-  tgi_lineto(x1, y1+4);				      // left line
+  // first box
+  tgi_line(x1+1, y1+3, x2-1, y1+3);     // top line
+  tgi_lineto(x2-1, y2);				          // right line
+  tgi_lineto(x1+1, y2);				          // bottom line
+  tgi_lineto(x1+1, y1+3);				        // left line
 
-  tgi_line(x1+1, y1+3, x2-1, y1+3);     
-  tgi_lineto(x2-1, y2-1);				    // right line
-  tgi_lineto(x1+1, y2-1);				    // bottom line
-  tgi_lineto(x1+1, y1+3);				    // left line
+  // second box
+  tgi_line(x1, y1+4, x2, y1+4);         // top line     
+  tgi_lineto(x2, y2-1);				          // right line
+  tgi_lineto(x1, y2-1);				          // bottom line
+  tgi_lineto(x1, y1+4);				          // left line
 
   // draw text title and prompt if passed in
     tgi_setcolor(TGI_COLOR_WHITE);

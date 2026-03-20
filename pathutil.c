@@ -87,13 +87,13 @@ unsigned char lynx_filetype(char *path)
   if (((ext[0] == 'O') || (ext[0] == 'o')) && (ext[1] == '\0'))
     return(FILETYPE_OBJ);
 
-  if (((ext[0] == 'L') || (ext[0] == 'l')) && ((ext[1] == 'N') || (ext[1] == 'n')) && ((ext[0] == 'X') || (ext[0] == 'x')))
+  if (((ext[0] == 'L') || (ext[0] == 'l')) && ((ext[1] == 'N') || (ext[1] == 'n')) && ((ext[2] == 'X') || (ext[2] == 'x')))
     return(FILETYPE_LNX);
 
-  if (((ext[0] == 'L') || (ext[0] == 'l')) && ((ext[1] == 'Y') || (ext[1] == 'y')) && ((ext[0] == 'X') || (ext[0] == 'x')))
+  if (((ext[0] == 'L') || (ext[0] == 'l')) && ((ext[1] == 'Y') || (ext[1] == 'y')) && ((ext[2] == 'X') || (ext[2] == 'x')))
     return(FILETYPE_LYX);
 
-  if (((ext[0] == 'C') || (ext[0] == 'c')) && ((ext[1] == 'O') || (ext[1] == 'o')) && ((ext[0] == 'M') || (ext[0] == 'm')))
+  if (((ext[0] == 'C') || (ext[0] == 'c')) && ((ext[1] == 'O') || (ext[1] == 'o')) && ((ext[2] == 'M') || (ext[2] == 'm')))
     return(FILETYPE_COM);
 
   return(FILETYPE_NONE);
