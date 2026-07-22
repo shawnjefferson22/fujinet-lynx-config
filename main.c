@@ -525,7 +525,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 
 	  // Write the block to SD card file
     display_file_action("w");
-  	r = sd_write_file_block(filename, (uint32_t) (i * BLOCK_SIZE), len, disk_block_buffer);
+  	r = sd_write_file_block(filename, ((uint32_t) i * (uint32_t) BLOCK_SIZE), len, disk_block_buffer);
   	if (!r) {
 	    display_error_and_wait("Error writing to SD file!");
       fujinet_unmount_image(disk_slot);
