@@ -50,7 +50,7 @@ unsigned char select_wifi_network(void)
 
 RESCAN:
   tgi_clear();
-  
+
   draw_box_with_text(SCAN_X, SCAN_Y, SCAN_X+116, SCAN_Y+32, TGI_COLOR_RED, NULL, NULL);
   tgi_outtextxy(SCAN_X+3, SCAN_Y+9, "Scanning wifi");
   tgi_outtextxy(SCAN_X+3, SCAN_Y+19, "Please wait...");
@@ -378,14 +378,14 @@ void show_ext_file_info(unsigned char dirpos)
 	//2
 
 	// output long filename
-	len = strlen(entry->filename);    
+	len = strlen(entry->filename);
 
   y = 1;                                // y screen coord
   str[19] = '\0';                       // make sure our output string is truncated
 	for(i=0; i<len; i=i+19) {
 		y += 8;
     strncpy(str, &entry->filename[i], 19);
-		tgi_outtextxy(3, y, str); 
+		tgi_outtextxy(3, y, str);
   }
 
   // output size if not a directory
@@ -401,7 +401,7 @@ void show_ext_file_info(unsigned char dirpos)
 	sprintf(s, "%02d/%02d/%02d %02d:%02d:%02d", entry->month, entry->day, entry->year, entry->hour, entry->min, entry->sec);
 	tgi_outtextxy(3, y, "Mod Time:");
 	tgi_outtextxy(3, y+8, s);
-	
+
 	wait_for_any_key();
 }
 
@@ -455,43 +455,54 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
     return(0);
   }
 
+  // Select directory to write file
+  #ifdef SDCARD_GAMEDRIVE
+    //switch(blocks) {
+    //  case 513:
+    //    strcpy(sd_dir, "/FUJINET/GAMEDRV.128");
+    //    break;
+    //  case 1025:
+    //    strcpy(sd_dir, "/FUJINET/GAMEDRV.256");
+    //    break;
+    //  case 2049:
+    //    strcpy(sd_dir, "FUJINET/GAMEDRV.512");
+    //    break;
+    //  default:
+        strcpy(sd_dir, "/FUJINET/GAMEDRV1");
+    //}
+  #else
+  	r = select_sdcard_dir();
+  	if (!r)
+  		return(0);
+  	//strcat(sd_dir, extract_filename(filename));
+  #endif
+
   tgi_clear();
   draw_box_with_text(4, 8, 155, 32, TGI_COLOR_RED, "Downloading", "OPT1=Cancel");
 
-  #ifdef SDCARD_GAMEDRIVE
-    switch(blocks) {
-      case 513:
-        strcpy(sd_dir, "/FUJINET/GAMEDRV.128");
-        break;
-      case 1025:
-        strcpy(sd_dir, "/FUJINET/GAMEDRV.256");
-        break;
-      case 2049:
-        strcpy(sd_dir, "FUJINET/GAMEDRV.512");
-        break;
-      default:
-        strcpy(sd_dir, "/FUJINET/GAMEDRV1");
-    }
-  #else
-  strcat(sd_dir, extract_filename(filename));
-  #endif
   sprintf(s, "%-19s", sd_dir);        // display dest dir
   tgi_outtextxy(1, 0, s);
 
-  // Open file on SD card
+  // Open/Create file on SD card
   display_file_action("o");
-  r = sd_open_file(sd_dir);
+  #ifdef SDCARD_GAMEDRIVE
+  	r = sd_open_file(sd_dir);
+  #endif
+  #ifdef SDCARD_BENNVENN
+  	r = sd_create_file(filename, size);
+  #endif
+
   if (!r) {
-	    display_error_and_wait("Error SD open file!");
-      fujinet_unmount_image(disk_slot);
-	    return(0);
+	  display_error_and_wait("Error SD create file!");
+    fujinet_unmount_image(disk_slot);
+	  return(0);
   }
 
   // Get all the blocks
   for(i=0; i<blocks; ++i) {
     sprintf(s, "Block %i of %i", i+1, blocks);
     tgi_outtextxy(6, 17, s);
-    
+
     display_file_action("r");
     len = fujidisk_read_block(FUJI_DEVICEID_DISK, i);
     // len is zero, or len != BLOCK_SIZE on any block except last
@@ -514,7 +525,7 @@ unsigned char get_file(unsigned char disk_slot, unsigned char dirpos)
 
 	  // Write the block to SD card file
     display_file_action("w");
-  	r = sd_write_file_block(len, disk_block_buffer);
+  	r = sd_write_file_block(filename, (uint32_t) (i * BLOCK_SIZE), len, disk_block_buffer);
   	if (!r) {
 	    display_error_and_wait("Error writing to SD file!");
       fujinet_unmount_image(disk_slot);
@@ -732,8 +743,13 @@ REDRAW:
         display_file_action("l");
         LaunchROM();
       }
-      #else
+      #endif
+
+      #ifdef SDCARD_BENNVENN
+
       display_file_data();              // display last block data, testing
+      open_dir();
+      get_dir_entries();
       #endif
       goto REDRAW;
     }

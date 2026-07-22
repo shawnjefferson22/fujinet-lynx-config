@@ -108,7 +108,7 @@ unsigned char fujinet_get_wifi_status(void)
 
 unsigned char fujinet_scan_networks(void)
 {
-  unsigned char r, i;
+  unsigned char r;
   char num;
 
   fn_cmd[0] = FUJICMD_SCAN_NETWORKS;

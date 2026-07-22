@@ -72,16 +72,17 @@ void gd_get_dir_entries(void)
  */
 unsigned char sd_open_rootdir(void)
 {
+  	unsigned char i;
+
   memset(sd_dir, 0, 256);
   strcpy(sd_dir, "/");
-  
+
   #ifdef SDCARD_BENNVENN
-    unsigned char i;
     for(i=0; i<4; ++i) {
       bennvenn_send_command("BACK", 4);
     }
 
-    //SDCARD_BENNVENN_send_command("ROOT", 4);
+    //bennvenn_send_command("ROOT", 4);
 
     bennvenn_send_command("DIR4XXX ", 8);
     bennvenn_file_count();
@@ -89,6 +90,7 @@ unsigned char sd_open_rootdir(void)
   #endif
 
   #ifdef SDCARD_GAMEDRIVE
+    (void) i;
     LynxSD_Init();
     if (LynxSD_OpenDir(sd_dir) == FR_OK) {
       gd_get_dir_entries();
@@ -105,12 +107,13 @@ unsigned char sd_open_dir(unsigned int entry)
 {
   #ifdef SDCARD_BENNVENN
   bennvenn_open(entry);
-  bennvenn_send_command("DIR4XXX", 7);
+  bennvenn_send_command("DIR4XXX ", 8);
   bennvenn_file_count();
   sd_num_files = bennvenn_num_folders + bennvenn_num_files;
   #endif
 
   #ifdef SDCARD_GAMEDRIVE
+  (void) entry;
   strcpy(sd_buf, sd_dir);               // make a copy of sd_dir
   sd_buf[strlen(sd_buf)-1] = '\0';      // strip off trailing slash
   if (LynxSD_OpenDir(sd_buf) != FR_OK) {
@@ -132,7 +135,7 @@ void sd_get_entries(unsigned int dirpos)
   unsigned char i;
 
 
-  sd_last_page = 0;						                      // reset last page flag
+  sd_last_page = 0;						                // reset last page flag
   memset(&filenames[0], 0, sizeof(filenames));			// clear filenames array
 
   if (dirpos >= (sd_num_files)) {
@@ -168,13 +171,29 @@ void sd_get_entries(unsigned int dirpos)
 }
 
 
+unsigned char sd_create_file(char *file, uint32_t size)
+{
+	#ifdef SDCARD_BENNVENN
+		bennvenn_new_file(extract_filename(file), size);
+	#else
+		(void) file;
+		(void) size;
+	#endif
+
+	return(1);
+}
+
+
 unsigned char sd_open_file(char *file)
 {
 	#ifdef SDCARD_GAMEDRIVE
-	if (LynxSD_OpenFile(file) == FR_OK)
-	  return(1);
-	else
-	  return(0);
+		if (LynxSD_OpenFile(file) == FR_OK)
+	  	return(1);
+		else
+	  	return(0);
+	#else
+		(void) file;
+		return(1);
 	#endif
 }
 
@@ -186,25 +205,44 @@ unsigned char sd_close_file(void)
 	  return(1);
 	else
 	  return(0);
+	#else
+		return(1);
 	#endif
 }
 
 
-unsigned char sd_write_file_block(uint16_t size, char *buf)
+unsigned char sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 {
 	unsigned char n;
-  
-  n = 3;
-  while (n) {
-    #ifdef SDCARD_GAMEDRIVE
-    if (LynxSD_WriteFile(buf, size) == FR_OK)
-	    return(1);
-	  #endif
-    
-    n--;
-  }
+	unsigned int s, transfer;
 
-  return(0);
+  	n = 3;
+  	while (n) {
+    	#ifdef SDCARD_GAMEDRIVE
+    	(void) file;
+    	(void) offset;
+    	(void) s;
+    	(void) transfer;
+
+    	if (LynxSD_WriteFile(buf, size) == FR_OK)
+	    	return(1);
+	  	#endif
+
+		#ifdef SDCARD_BENNVENN
+			for (s = 0; s < size; s += transfer) {
+			    transfer = (size - s > 108) ? 108 : (size - s);
+
+			    if (!bennvenn_save(extract_filename(file), (offset + (uint32_t) s), transfer, &buf[s]))
+			    	return(0);
+			}
+		#endif
+
+    	n--;
+  	}
+
+
+
+  	return(0);
 }
 
 
@@ -218,6 +256,11 @@ unsigned char select_sdcard_dir(void)
   unsigned int dirpos;
   unsigned char len;
 
+
+  //bennvenn_new_file("test.txt", 1024);
+  //bennvenn_save("test.txt", 0, 14, "This is test 1");
+  //bennvenn_save("test.txt", 256, 14, "This is test 2");
+  //bennvenn_save("test.txt", 512, 14, "This is test 3");
 
   tgi_clear();
   draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Destination", "A=Open Dir B=Select");
@@ -307,7 +350,7 @@ unsigned char select_sdcard_dir(void)
             display_error_and_wait("Error opening sdcard!");
             return(0);
           }
-          
+
           sd_get_entries(dirpos);				        // get new directory entries
       	#endif
   	  }
@@ -335,7 +378,6 @@ unsigned char select_sdcard_dir(void)
     // A button selects directory or file
     if (JOY_BTN_1(joy)) {
       // Is this a directory?
-      //if (filenames[sel][strlen(filenames[sel])-1] == '/') {
       if (path_is_dir(filenames[sel])) {
         strcat(sd_dir, filenames[sel]);       	// add to directory string
 
@@ -349,11 +391,42 @@ unsigned char select_sdcard_dir(void)
         sd_get_entries(dirpos);
       }
       else {
-        // FIXME: on gamedrive, overwrite the file selected?
+        // FIXME: overwrite the file selected?
         return(1);
       }
     }
   }
 
   #endif		// SDCARD_NONE
+}
+
+
+/* sd_find_filenum
+ *
+ * Return the file number of the file matching filename (mainly for BennVenn)
+ */
+unsigned int sd_find_filenum(char *filename)
+{
+	char tmp[64];
+	unsigned int i;
+
+  	i = 0;
+  	while (1) {
+  		memset(tmp, 0, 64);
+
+  		#ifdef SDCARD_BENNVENN
+    		bennvenn_set_dir_pos(0);
+      		bennvenn_read_next_dir_entry(tmp);
+			if (tmp[0] == '\0')
+				break;
+
+			if (strcmp(filename, tmp) == 0)
+				return i;
+	 	#else
+	 		(void) filename;
+	 		break;
+	 	#endif
+	}
+
+	return(16384);
 }

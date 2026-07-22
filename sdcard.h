@@ -17,7 +17,9 @@ void sd_get_dir_entries(unsigned int dirpos);
 unsigned char select_sdcard_dir(void);
 unsigned char sd_open_file(char *file);
 unsigned char sd_close_file(void);
-unsigned char sd_write_file_block(uint16_t size, char *buf);
+unsigned char sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf);
 
+unsigned char sd_create_file(char *file, uint32_t size);
+unsigned int sd_find_filenum(char *filename);
 
 #endif

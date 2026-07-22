@@ -30,6 +30,8 @@ void bennvenn_set_dir_pos(unsigned int pos);
 void bennvenn_get_dir_entries(void);
 void bennvenn_get_dir_entry(unsigned char num, char *entry);
 
+unsigned char bennvenn_new_file(char *file, unsigned long size);
+unsigned char bennvenn_save(char *file, unsigned long offset, unsigned char size, char *buf);
 
 void test_bennvenn_dir(void);
 

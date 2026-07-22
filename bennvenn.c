@@ -10,17 +10,27 @@
 #include <stdbool.h>
 #include "bennvenn.h"
 #include "sdcard.h"
+#include "pathutil.h"
 
 
 /*  Command set
+// Directory commands and booting
 SendCommand("LAST",4); //BOOT the last loaded ROM - make sure config file has the last booted file in there or else.. who knows!
 SendCommand("ROOT",4); //Reinitialise the SD card, set root directory
 SendCommand("DIR4LNXLYXO  SAV",16); //eg Directory Listing of 4 file types, *.LNX *.LYX, *.O *.SAV - up to 10 file types supported - File and Folder count are returned in the buffer
 SendCommand("OPEN\x00\x00\x00\x0F",8); //Boot or open(if a directory) the 15th entry in the SRAM array
 SendCommand("INSPECT\x00\x00\x00\x03",8); //Recover the first 126 bytes of the file via the buffer
 SendCommand("BACK",4); //Go back one directory.
+
+// config reading (??)
 SendCommand("CONFIGW\x00\x00\x00\x00\x00\x00\x00\x08NEW DATA",23); //Write to the config file CONFIGWaaaabbbbccccccc.... a=offset of file, b=bytes to write, c=the databytes
 SendCommand("CONFIGR\x00\x00\x00\x00\x00\x00\x00\x08",15); //Read from the config file CONFIGRaaaabbbb (max length of 126 bytes per transaction due to checksum byte) - data returned in the buffer
+
+// file loading/saving
+sendCommand("LOAD<filename 11 bytes><4 bytes dest in SRAM><4 bytes offset from file><4 bytes length>", size of string);
+SendCommand("SAVE<filename 11 bytes><4 bytes offet><1 byte length><data>", size of string);
+SendCommand("NEW<filename 11 bytes><4 bytes size>", size of string);
+
 Reset(); //Resets the lynx - call this after booting the rom to free up the eeprom bus
 File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
 *
@@ -67,7 +77,7 @@ void bennvenn_get_response(void) {
   i = 0;
   for(cell=0; cell<64; ++cell) {				// 64 2-byte EEPROM cells to read
     d = lynx_eeread_BV(cell);
-    sd_buf[i+1] = (char) (d & 0xFF);				// 128 byte buffer to read into
+    sd_buf[i+1] = (char) (d & 0xFF);			// 128 byte buffer to read into
     sd_buf[i] = (char) (d >> 8);
 
     i += 2;
@@ -152,7 +162,8 @@ void bennvenn_file_count(void)
 
 /* Reads the next directory entry from the bennvenn cartridge
  * Can be called after the directory command is issued.
- *
+ * File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
+ * 
  * Will return the LFN (up to 46 characters + null) in entry
  */
 void bennvenn_read_next_dir_entry(char *entry)
@@ -160,7 +171,12 @@ void bennvenn_read_next_dir_entry(char *entry)
   read(0, &sd_buf, sizeof(BV_FILE_STRUCT));
 
   memcpy(entry, &sd_buf[0], 46);
-  entry[47] = '\0';
+  if (sd_buf[55] != 1) {
+    entry[strlen(entry)] = '/';
+    entry[strlen(entry)+1] = '\0';
+  }
+  else
+    entry[47] = '\0';
 }
 
 
@@ -170,6 +186,74 @@ void bennvenn_read_next_dir_entry(char *entry)
 void bennvenn_set_dir_pos(unsigned int pos)
 {
   lseek(0, pos*sizeof(BV_FILE_STRUCT), SEEK_SET);
+}
+
+
+/* Creates a new file with filename, and size
+ *
+ */
+unsigned char bennvenn_new_file(char *file, unsigned long size)
+{
+  	unsigned char r;
+    char fn[9];
+
+  	//012345678901234567
+  	//NEWFILENAMEEXT1234
+    r = strcspn(file, ".");
+    memcpy(fn, file, r);
+    fn[r] = '\0';
+  	sprintf(sd_buf, "NEW%-8s%-3s %ld", fn, extract_ext(file), size);
+    tgi_outtextxy(0, 50, sd_buf);
+    //cgetc();
+
+  	sd_buf[14] = (unsigned char) (size >> 24);
+  	sd_buf[15] = (unsigned char) (size >> 16);
+  	sd_buf[16] = (unsigned char) (size >> 8);
+  	sd_buf[17] = (unsigned char) (size);
+
+  	r = bennvenn_send_command(sd_buf, 18);
+	  if (r)
+		  return(1);
+	  else
+		  return(0);
+}
+
+
+/* Saves a file to the bennvenn cartridge
+ *
+ */
+unsigned char bennvenn_save(char *file, unsigned long offset, unsigned char size, char *buf)
+{
+  	unsigned char r;
+    char fn[9];
+    char s[40];
+
+
+	// Cannot save more than 108 bytes at a time
+	if (size > 108)
+		return(0);
+
+  	//012345678901234567890
+  	//SAVEFILENAMEEXT12341DATA
+  	
+    r = strcspn(file, ".");
+    memcpy(fn, file, r);
+    fn[r] = '\0';
+    sprintf(sd_buf, "SAVE%-8s%-3s", fn, extract_ext(file));
+    tgi_outtextxy(0, 58, sd_buf);
+    sprintf(s, "o:%ld s:%d", offset, size);
+    tgi_outtextxy(0, 67, s);
+    cgetc();
+
+  	sd_buf[15] = (unsigned char) (offset >> 24);
+  	sd_buf[16] = (unsigned char) (offset >> 16);
+  	sd_buf[17] = (unsigned char) (offset >> 8);
+  	sd_buf[18] = (unsigned char) (offset);
+
+  	sd_buf[19] = size;
+  	memcpy(&sd_buf[20], buf, size);
+
+  	r = bennvenn_send_command(sd_buf, 20+size);
 }
 
 
