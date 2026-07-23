@@ -1,5 +1,8 @@
 #include "LynxSD.h"
 
+
+#ifdef SDCARD_GAMEDRIVE
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Microcontroller communication constants
@@ -198,4 +201,7 @@ FRESULT __fastcall__ LynxSD_ClearROMBlocks(u16 nStartBlock, u16 nBlocks, u8 b512
 	WriteWord(nBlocks); // or with 0x8000 for 512 block card (a19 controlled by aux pin)
 	return (FRESULT) ReadByte(); // waits for clearing to end and gets result
 }
+
+
+#endif
 

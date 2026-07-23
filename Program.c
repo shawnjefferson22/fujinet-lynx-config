@@ -25,6 +25,9 @@ SOFTWARE.
 #include "Program.h"
 #include <tgi.h>
 
+#ifdef SDCARD_GAMEDRIVE
+
+
 /*
  ******************************************************************************
  Functions for programming a ROM into cart SRAM from LNX, LYX and O files
@@ -92,7 +95,7 @@ FRESULT __fastcall__ LynxSD_Program(const char *pFilename)
 			if (szHeader[60] & USE_SD_EEPROM_MASK) {
 				bLaunchLowPower = 0;
 			}
-			
+
 			nBlockSize = szHeader[5];
 
 			if ((nBlockSize == 1 || nBlockSize == 2 || nBlockSize == 4 || nBlockSize == 8)) {
@@ -128,7 +131,7 @@ FRESULT __fastcall__ LynxSD_ProgramLYX(const char *pFilename)
 		u16 nBlockSizeBytes;
 		u32 nSize;
     	u16 nBlockCount;
-	
+
 		nSize = LynxSD_GetFileSize();
 		switch (nSize)
 		{
@@ -148,7 +151,7 @@ FRESULT __fastcall__ LynxSD_ProgramLYX(const char *pFilename)
 				nBlockSize = 4;
 				break;
 		}
-		
+
 		nBlockSizeBytes = nBlockSize << 8;
 		nBlockCount = (nSize + nBlockSizeBytes - 1) / nBlockSizeBytes;
 
@@ -194,7 +197,7 @@ FRESULT __fastcall__ LynxSD_ProgramHomebrew(const char *pFilename)
             //-- Write out loader
             LynxSD_WriteFile(gObjectLoader, sizeof(gObjectLoader));
             LynxSD_CloseFile(); // flush written data
-  
+
             while (nDelay--);
             LynxSD_OpenFile("menu/homebrew");
 
@@ -255,5 +258,8 @@ void LaunchROM()
 			*ptr++ = 0;
 		}
 
-		asm("brk");	
+		asm("brk");
 }
+
+
+#endif

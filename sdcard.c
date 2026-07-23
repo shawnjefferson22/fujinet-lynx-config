@@ -20,14 +20,13 @@
 #endif
 
 #ifdef SDCARD_GAMEDRIVE
-  //#include "LynxGD.h"
   #include "LynxSD.h"
 #endif
 
 
-char sd_buf[256];			      // sdcard read buffer
-char sd_dir[256];			      // sdcard destination directory
-char sd_last_page;	  		  // sdcard directory entries last page flag
+char sd_buf[256];			// sdcard read buffer
+char sd_dir[256];			// sdcard destination directory
+char sd_last_page;	  		// sdcard directory entries last page flag
 unsigned int sd_num_files;  // total number of files and folders in directory
 
 
@@ -70,7 +69,7 @@ void gd_get_dir_entries(void)
  *
  * Open the SD root directory, if required.
  */
-unsigned char sd_open_rootdir(void)
+bool sd_open_rootdir(void)
 {
   	unsigned char i;
 
@@ -78,10 +77,9 @@ unsigned char sd_open_rootdir(void)
   strcpy(sd_dir, "/");
 
   #ifdef SDCARD_BENNVENN
-    for(i=0; i<4; ++i) {
+    for(i=0; i<4; ++i) {						// hack, since ROOT doesn't seem to work
       bennvenn_send_command("BACK", 4);
     }
-
     //bennvenn_send_command("ROOT", 4);
 
     bennvenn_send_command("DIR4XXX ", 8);
@@ -96,14 +94,14 @@ unsigned char sd_open_rootdir(void)
       gd_get_dir_entries();
     }
     else
-      return(0);
+      return(false);
   #endif
 
-  return(1);
+  return(true);
 }
 
 
-unsigned char sd_open_dir(unsigned int entry)
+bool sd_open_dir(unsigned int entry)
 {
   #ifdef SDCARD_BENNVENN
   bennvenn_open(entry);
@@ -117,12 +115,12 @@ unsigned char sd_open_dir(unsigned int entry)
   strcpy(sd_buf, sd_dir);               // make a copy of sd_dir
   sd_buf[strlen(sd_buf)-1] = '\0';      // strip off trailing slash
   if (LynxSD_OpenDir(sd_buf) != FR_OK) {
-    return(0);
+    return(false);
   }
   gd_get_dir_entries();
   #endif
 
-  return(1);
+  return(true);
 }
 
 
@@ -171,7 +169,7 @@ void sd_get_entries(unsigned int dirpos)
 }
 
 
-unsigned char sd_create_file(char *file, uint32_t size)
+bool sd_create_file(char *file, uint32_t size)
 {
 	#ifdef SDCARD_BENNVENN
 		bennvenn_new_file(extract_filename(file), size);
@@ -180,41 +178,42 @@ unsigned char sd_create_file(char *file, uint32_t size)
 		(void) size;
 	#endif
 
-	return(1);
+	return(true);
 }
 
 
-unsigned char sd_open_file(char *file)
+bool sd_open_file(char *file)
 {
 	#ifdef SDCARD_GAMEDRIVE
 		if (LynxSD_OpenFile(file) == FR_OK)
-	  	return(1);
+	  	return(true);
 		else
-	  	return(0);
+	  	return(false);
 	#else
 		(void) file;
-		return(1);
+		return(true);
 	#endif
 }
 
 
-unsigned char sd_close_file(void)
+bool sd_close_file(void)
 {
 	#ifdef SDCARD_GAMEDRIVE
 	if (LynxSD_CloseFile() == FR_OK)
-	  return(1);
+	  return(true);
 	else
-	  return(0);
+	  return(false);
 	#else
-		return(1);
+		return(true);
 	#endif
 }
 
 
-unsigned char sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
+bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 {
 	unsigned char n;
 	unsigned int s, transfer;
+  char str[40];
 
   	n = 3;
   	while (n) {
@@ -225,179 +224,30 @@ unsigned char sd_write_file_block(char *file, uint32_t offset, uint16_t size, ch
     	(void) transfer;
 
     	if (LynxSD_WriteFile(buf, size) == FR_OK)
-	    	return(1);
+	    	return(true);
 	  	#endif
 
 		#ifdef SDCARD_BENNVENN
 			for (s = 0; s < size; s += transfer) {
 			    transfer = (size - s > 108) ? 108 : (size - s);
 
-			    if (!bennvenn_save(extract_filename(file), (offset + (uint32_t) s), transfer, &buf[s]))
-			    	return(0);
+	        // FIXME: debugging
+		      sprintf(str, "o:%-5ld s:%-3d", (uint32_t) (offset + (uint32_t) s), s);
+		      tgi_outtextxy(0, 58, str);
+    	    //cgetc();
+
+			    if (!bennvenn_save(extract_filename(file), (uint32_t) (offset + (uint32_t) s), transfer, &buf[s]))
+			    	continue;   // try again
 			}
+      
+      // must have been successful
+      return(true);
 		#endif
 
     	n--;
   	}
 
-
-
-  	return(0);
-}
-
-
-unsigned char select_sdcard_dir(void)
-{
-  #ifndef SDCARD_NONE
-
-  unsigned char r, st, scrdir;
-  unsigned int delay;
-  unsigned char joy, sel;
-  unsigned int dirpos;
-  unsigned char len;
-
-
-  //bennvenn_new_file("test.txt", 1024);
-  //bennvenn_save("test.txt", 0, 14, "This is test 1");
-  //bennvenn_save("test.txt", 256, 14, "This is test 2");
-  //bennvenn_save("test.txt", 512, 14, "This is test 3");
-
-  tgi_clear();
-  draw_box_with_text(0, 0, 159, 92, TGI_COLOR_YELLOW, "Destination", "A=Open Dir B=Select");
-
-  // Initialize and start at root directory
-  sel = dirpos = 0;
-  r = sd_open_rootdir();
-  if (!r) {
-    display_error_and_wait("Error opening sdcard!");
-    return(0);
-  }
-  sd_get_entries(0);
-
-  // input loop
-  while(1) {
-    st = scrdir = delay = 0;                       // reset start of entry, dir of scroll, delay
-    display_files(sel);
-
-    // Process joystick and keys
-    do {
-      r = check_joy_and_keys(&joy);
-      if (r == '2')       // opt2 exits
-        return(0);
-      if (r == '1')
-        return(1);        // opt1 selects
-
-      // Need to scroll this entry?
-      len  = strlen(filenames[sel]);
-      if ((delay == SCROLL_DELAY) && (len > 19)) {
-        if (scrdir)
-          st--;       // backward
-        else
-          st++;       // forward
-
-        if (st > (len-20))
-          scrdir = 1;                                   // reverse scroll dir
-        else if (st == 0)
-          scrdir = 0;                                   // forward direction
-
-        scroll_file_entry(sel, st);						// scroll it!
-        delay = 0;
-      }
-
-      delay++;
-    } while (!r && !joy);
-
-	// Process the joystick input
-    if (JOY_UP(joy)) {
-      if (sel != 0)							      // not at top of page
-        --sel;
-      else {								          // at top of page
-	      if (dirpos > 9) {					    // only if we aren't at top of directory already!
-	        joy = JOY_LEFT_MASK;		    // set joy left, and let it process down below
-	      }
-      }
-    }
-    if (JOY_DOWN(joy)) {
-      if (sel < 9) {                        // last entry on page?
-        ++sel;
-        if (filenames[sel][0] == '\0')      // blank entry? don't increment
-          --sel;
-      }
-      else {
-	      joy = JOY_RIGHT_MASK;				        // set joystick right and let it process down below
-      }
-    }
-    if (JOY_LEFT(joy)) {
-      // go back previous page?
-      sel = 0;
-      if (dirpos > 9) {
-        dirpos -= 10;                   	      // get previous page of entries
-        sd_get_entries(dirpos);				          // get new directory entries
-      }
-      else {
-      	dirpos = 0;							                // back at root
-      	#ifdef SDCARD_BENNVENN
-          bennvenn_send_command("BACK", 4);   	// back up a directory
-          sd_open_dir(dirpos);        		      // open the dir
-          sd_get_entries(dirpos);				        // get new directory entries
-      	#endif
-      	#ifdef SDCARD_GAMEDRIVE
-			    if (sd_dir[1] != '\0') {			        // at root already?
-            strip_dir_from_path((char *) &sd_dir);       // back up a directory
-			    }
-          r = sd_open_dir(dirpos);				       // open the previous directory
-          if (!r) {
-            display_error_and_wait("Error opening sdcard!");
-            return(0);
-          }
-
-          sd_get_entries(dirpos);				        // get new directory entries
-      	#endif
-  	  }
-
-      continue;							    	              // restart the loop
-    }
-    if (JOY_RIGHT(joy)) {
-      if (!sd_last_page) {						          // if not at last page, get next page
-        if ((dirpos + 10) <= sd_num_files) {
-          dirpos += 10;
-          sd_get_entries(dirpos);
-          sel = 0;
-          continue;								                // restart the loop
-        }
-      }
-    }
-
-    // B button selects the directory
-    if (JOY_BTN_2(joy)) {
-      // FIXME: Do something here to record our destination (actually, sd_dir should already be set)
-
-      return(1);                               // exit to host select, directory selected
-    }
-
-    // A button selects directory or file
-    if (JOY_BTN_1(joy)) {
-      // Is this a directory?
-      if (path_is_dir(filenames[sel])) {
-        strcat(sd_dir, filenames[sel]);       	// add to directory string
-
-        r = sd_open_dir(dirpos+sel);        		// open the dir  - GameDrive code ignores passed in dir pos
-        if (!r) {
-          display_error_and_wait("Error opening sdcard!");
-          return(0);
-        }
-
-        dirpos = sel = 0;
-        sd_get_entries(dirpos);
-      }
-      else {
-        // FIXME: overwrite the file selected?
-        return(1);
-      }
-    }
-  }
-
-  #endif		// SDCARD_NONE
+  	return(false);
 }
 
 

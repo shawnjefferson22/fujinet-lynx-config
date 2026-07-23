@@ -12,6 +12,8 @@
 #include "sdcard.h"
 #include "pathutil.h"
 
+#ifdef SDCARD_BENNVENN
+
 
 /*  Command set
 // Directory commands and booting
@@ -64,6 +66,20 @@ void dump_sdbuf(void)
 
   cgetc();
 }*/
+
+
+/* trim spaces off entry
+ */
+void rtrim(char *str)
+{
+    size_t len = strlen(str);
+
+    while (len > 0 && str[len - 1] == ' ')
+    {
+        str[len - 1] = '\0';
+        len--;
+    }
+}
 
 
 /* bennvenn_get_response
@@ -163,20 +179,28 @@ void bennvenn_file_count(void)
 /* Reads the next directory entry from the bennvenn cartridge
  * Can be called after the directory command is issued.
  * File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
- * 
+ *
  * Will return the LFN (up to 46 characters + null) in entry
  */
 void bennvenn_read_next_dir_entry(char *entry)
 {
-  read(0, &sd_buf, sizeof(BV_FILE_STRUCT));
+  	BV_FILE_STRUCT *bv_entry;
 
-  memcpy(entry, &sd_buf[0], 46);
-  if (sd_buf[55] != 1) {
-    entry[strlen(entry)] = '/';
-    entry[strlen(entry)+1] = '\0';
-  }
-  else
-    entry[47] = '\0';
+	// read the directory entry
+  	bv_entry = (BV_FILE_STRUCT *) &sd_buf;
+  	read(0, bv_entry, sizeof(BV_FILE_STRUCT));
+
+	// copy the filename
+  	memcpy(entry, bv_entry->long_name, sizeof(bv_entry->long_name));
+  	rtrim(entry);		// trim whitespace off right side
+
+  	// Is this a directory?
+  	if (bv_entry->type != 1) {					// FIXME: what are the actual type values?
+    	entry[strlen(entry)] = '/';
+    	entry[strlen(entry)+1] = '\0';
+  	}
+  	else
+    	entry[47] = '\0';						// ensure LFN is null terminated
 }
 
 
@@ -192,20 +216,28 @@ void bennvenn_set_dir_pos(unsigned int pos)
 /* Creates a new file with filename, and size
  *
  */
-unsigned char bennvenn_new_file(char *file, unsigned long size)
+bool bennvenn_new_file(char *filename, unsigned long size)
 {
   	unsigned char r;
-    char fn[9];
+    char fn[12];
+    char s[40];
 
-  	//012345678901234567
-  	//NEWFILENAMEEXT1234
-    r = strcspn(file, ".");
-    memcpy(fn, file, r);
-    fn[r] = '\0';
-  	sprintf(sd_buf, "NEW%-8s%-3s %ld", fn, extract_ext(file), size);
-    tgi_outtextxy(0, 50, sd_buf);
+    sprintf(s, "f:%s", filename);
+    tgi_outtextxy(0, 70, s);
+
+	  r = extract_and_pad_filename(filename, fn);
+	  if (!r)
+		  return(false);
+
+    sprintf(s, "f:%s", fn);
+    tgi_outtextxy(0, 78, s);
+    sprintf(s, "s:%-5ld", size);
+    tgi_outtextxy(0, 86, s);
     //cgetc();
 
+    //012345678901234567
+  	//NEWFILENAMEEXT1234
+    sprintf(sd_buf, "NEW%-8.8s%3.3s", fn, extract_ext(filename));
   	sd_buf[14] = (unsigned char) (size >> 24);
   	sd_buf[15] = (unsigned char) (size >> 16);
   	sd_buf[16] = (unsigned char) (size >> 8);
@@ -213,38 +245,37 @@ unsigned char bennvenn_new_file(char *file, unsigned long size)
 
   	r = bennvenn_send_command(sd_buf, 18);
 	  if (r)
-		  return(1);
+		  return(true);
 	  else
-		  return(0);
+		  return(false);
 }
 
 
 /* Saves a file to the bennvenn cartridge
  *
  */
-unsigned char bennvenn_save(char *file, unsigned long offset, unsigned char size, char *buf)
+bool bennvenn_save(char *filename, unsigned long offset, unsigned char size, char *buf)
 {
   	unsigned char r;
-    char fn[9];
+    char fn[12];
     char s[40];
 
 
-	// Cannot save more than 108 bytes at a time
-	if (size > 108)
-		return(0);
+	  // Cannot save more than 108 bytes at a time
+	  if (size > 108)
+		  return(false);
 
-  	//012345678901234567890
-  	//SAVEFILENAMEEXT12341DATA
-  	
-    r = strcspn(file, ".");
-    memcpy(fn, file, r);
-    fn[r] = '\0';
-    sprintf(sd_buf, "SAVE%-8s%-3s", fn, extract_ext(file));
-    tgi_outtextxy(0, 58, sd_buf);
-    sprintf(s, "o:%ld s:%d", offset, size);
+	  r = extract_and_pad_filename(filename, fn);
+	  if (!r)
+		  return(false);
+
+    sprintf(s, "o:%-5ld s:%-3d", offset, size);
     tgi_outtextxy(0, 67, s);
-    cgetc();
+    //cgetc();
 
+    //012345678901234567890
+  	//SAVEFILENAMEEXT12341DATA
+    sprintf(sd_buf, "SAVE%8.8s%3.3s", fn, extract_ext(filename));
   	sd_buf[15] = (unsigned char) (offset >> 24);
   	sd_buf[16] = (unsigned char) (offset >> 16);
   	sd_buf[17] = (unsigned char) (offset >> 8);
@@ -254,6 +285,7 @@ unsigned char bennvenn_save(char *file, unsigned long offset, unsigned char size
   	memcpy(&sd_buf[20], buf, size);
 
   	r = bennvenn_send_command(sd_buf, 20+size);
+    return(true);
 }
 
 
@@ -298,3 +330,5 @@ void test_bennvenn_dir(void)
   tgi_outtextxy(0, 95, "press any key");
 }
 */
+
+#endif

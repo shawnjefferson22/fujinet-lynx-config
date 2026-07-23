@@ -127,7 +127,7 @@ void draw_box_with_text(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t 
   tgi_lineto(x1+1, y1+3);				        // left line
 
   // second box
-  tgi_line(x1, y1+4, x2, y1+4);         // top line     
+  tgi_line(x1, y1+4, x2, y1+4);         // top line
   tgi_lineto(x2, y2-1);				          // right line
   tgi_lineto(x1, y2-1);				          // bottom line
   tgi_lineto(x1, y1+4);				          // left line
@@ -298,6 +298,7 @@ void display_file_action(char *c)
 
 // display data of dksbuf in hex
 // for troubleshooting/debug
+/*
 void display_file_data(void)
 {
   unsigned char i, j;
@@ -311,3 +312,4 @@ void display_file_data(void)
 
   wait_for_any_key();
 }
+*/

@@ -1,6 +1,8 @@
 #ifndef __LYNX_SD__
 #define __LYNX_SD__
 
+#ifdef SDCARD_GAMEDRIVE
+
 typedef signed char s8;
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -46,5 +48,8 @@ FRESULT __fastcall__ LynxSD_SeekFile(u32 nSeekPos);
 u32 LynxSD_GetFileSize();
 FRESULT __fastcall__ LynxSD_ProgramROMFromFile(u16 nStartBlock, u8 nBlockSize, u16 nBlockCount, u8 b512BlockCard);
 FRESULT __fastcall__ LynxSD_ClearROMBlocks(u16 nStartBlock, u16 nBlocks, u8 b512BlockCard);
+
+
+#endif
 
 #endif // __LYNX_SD__

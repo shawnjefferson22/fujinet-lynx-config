@@ -1,7 +1,7 @@
 #ifndef BENNVENN_H
 #define BENNVEN_H
 
-
+#ifdef SDCARD_BENNVENN
 
 // File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
 typedef struct {
@@ -19,21 +19,24 @@ extern unsigned int bennvenn_num_folders;
 extern unsigned int __fastcall__ lynx_eewrite_BV(unsigned int cell, unsigned int val);
 extern unsigned int __fastcall__ lynx_eeread_BV(unsigned char cell);
 
+// command and response
+unsigned char bennvenn_send_command(char data[64], unsigned char length);
+void bennvenn_get_response(void);
 
 // bennvenn sdcard functions
-void bennvenn_get_response(void);
-unsigned char bennvenn_send_command(char data[64], unsigned char length);
 void bennvenn_open(unsigned int num);
 void bennvenn_file_count(void);
 void bennvenn_read_next_dir_entry(char *entry);
 void bennvenn_set_dir_pos(unsigned int pos);
 void bennvenn_get_dir_entries(void);
 void bennvenn_get_dir_entry(unsigned char num, char *entry);
+bool bennvenn_new_file(char *filename, unsigned long size);
+bool bennvenn_save(char *filename, unsigned long offset, unsigned char size, char *buf);
 
-unsigned char bennvenn_new_file(char *file, unsigned long size);
-unsigned char bennvenn_save(char *file, unsigned long offset, unsigned char size, char *buf);
-
+// testing/debugging
 void test_bennvenn_dir(void);
 
+
+#endif
 
 #endif

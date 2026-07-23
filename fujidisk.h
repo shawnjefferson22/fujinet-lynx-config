@@ -9,8 +9,13 @@
 #ifndef FUJIDISK_H
 #define FUJIDISK_H
 
-
 #define BLOCK_SIZE  256
+
+typedef enum
+{
+	BLOCK_RAW = 0,
+	BLOCK_LZSA2 = 1
+} block_compression_t;
 
 extern char dskbuf[BLOCK_SIZE+5];               // expose the buffer (room for device(1)+command(1)+block(4))
 extern char *disk_block_buffer;                 // pointer to disk block data

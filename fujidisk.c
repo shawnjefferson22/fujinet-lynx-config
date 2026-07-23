@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <tgi.h>
+#include <lzsa.h>
 #include "display.h"
 #include "input.h"
 #include "lynxfnio.h"
@@ -28,6 +29,7 @@
 unsigned short fd_len;                    // length returned
 char dskbuf[BLOCK_SIZE+5];                // buffer to use for disk
 char *disk_block_buffer = &dskbuf[5];     // pointer to disk block data
+char compressed_dskbuf[BLOCK_SIZE+1];	  // compressed disk buffer (block size and one header byte)
 
 
 
@@ -44,39 +46,55 @@ void _fujidisk_set_block(unsigned long block)
 // Receive the disk sector/block
 unsigned int fujidisk_read_block(unsigned char dev, unsigned long block)
 {
-  unsigned char r, i;
+	unsigned char r, i;
 
-  // clear the disk buffer since we may get a partial block
-  memset(dskbuf, 0x00, sizeof(dskbuf));
+	// clear the disk buffer since we may get a partial block
+	memset(dskbuf, 0x00, sizeof(dskbuf));
+	memset(compressed_dskbuf, 0x00, sizeof(dskbuf));
 
-  // set device and command
-  dskbuf[0] = FUJICMD_READ;
-  _fujidisk_set_block(block);
+	// set device and command
+	dskbuf[0] = FUJICMD_READ;
+	_fujidisk_set_block(block);
 
-  // send command
-  for(i=0; i<FN_RETRIES; ++i) {
-    r = fnio_send_buf(dev, &dskbuf[0], 5);
-    if (r) break;
-  }
-  // failed retries
-  if (!r)
+	// send command
+	for(i=0; i<FN_RETRIES; ++i) {
+		r = fnio_send_buf(dev, &dskbuf[0], 5);
+		if (r) break;
+	}
+	// failed retries
+	if (!r)
+		return(0);
+
+  /* Old disk block method */
+  r = fnio_recv_buf(disk_block_buffer, &fd_len);
+  // Error or no data returned?
+  if ((fd_len == 0) || (!r))
     return(0);
 
-  // receive disk block
-  //for(i=0; i<FN_RETRIES; ++i) {
-  r = fnio_recv_buf(disk_block_buffer, &fd_len);
-  //if (r) break;
-  //}
+    /*
+
+	// Compressed disk block method
+	r = fnio_recv_buf(compressed_dskbuf, &fd_len);
+	if ((fd_len == 0) || (!r))
+	return(0);
+
+	// Compressed block?
+	switch(compressed_dskbuf[0]) {
+		case BLOCK_RAW:
+			memcpy(&disk_block_buffer, &compressed_dskbuf[1], BLOCK_SIZE);
+			break;
+		case BLOCK_LZSA2:
+			decompress_lzsa2 ((const char *) &compressed_dskbuf[1], &disk_block_buffer);
+			break;
+	}
+
+	*/
 
   // typically a disk "block" will be 256 bytes, but the last block may be partial as
   // not all files on the Lynx are divisble by 256 bytes.  Return the true number of
   // bytes read.
 
-  // Error or no data returned?
-  if ((fd_len == 0) || (!r))
-    return(0);
-  else
-    return(fd_len);
+  return(fd_len);
 }
 
 
@@ -85,12 +103,12 @@ unsigned int fujidisk_read_block(unsigned char dev, unsigned long block)
 unsigned char fujidisk_write_block(unsigned char dev, unsigned long block)
 {
   unsigned char r, i;
-  
-  
+
+
   // set device and command
   dskbuf[0] = FUJICMD_WRITE;
   _fujidisk_set_block(block);
-  
+
   // send command
   for(i=0; i<FN_RETRIES; ++i) {
     r = fnio_send_buf(dev, &dskbuf[0], sizeof(dskbuf));

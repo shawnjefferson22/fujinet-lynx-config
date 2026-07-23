@@ -1,5 +1,7 @@
 #include <6502.h>
 #include <lynx.h>
+#include <tgi.h>
+#include <conio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -9,6 +11,9 @@
 #include "pathutil.h"
 
 
+/* Takes the filename off leaving slash
+ *
+ */
 void strip_dir_from_path(char *path)
 {
   unsigned char i;
@@ -24,16 +29,22 @@ void strip_dir_from_path(char *path)
 }
 
 
-uint8_t path_is_dir(char *path)
+/* does this path have a trailing slash (directory) ?
+ *
+ */
+bool path_is_dir(const char *path)
 {
   if (path[strlen(path)-1] == '/')
-    return(1);
+    return(true);
   else
-    return(0);
+    return(false);
 }
 
 
-char *_extract_at_char(char *path, char c)
+/* return string after first occurence of c
+ *
+ */
+char *_extract_at_char(const char *path, char c)
 {
   char *cp;
 
@@ -45,7 +56,10 @@ char *_extract_at_char(char *path, char c)
 }
 
 
-char *extract_filename(char *path)
+/* return just the filename portion of the string
+ *
+ */
+char *extract_filename(const char *path)
 {
     if (path == NULL || *path == '\0')
         return NULL;
@@ -54,17 +68,13 @@ char *extract_filename(char *path)
         return NULL;
 
     return(_extract_at_char(path, '/'));
-
- /*   slash = strrchr(path, '/');
-    if (slash)
-        return slash + 1;   // char after the last slash
-    else
-        return NULL;        // no slash entire string is filename?
-*/
 }
 
 
-char *extract_ext(char *path)
+/*
+ * return just the extension portion of the string
+ */
+char *extract_ext(const char *path)
 {
   if (path == NULL || *path == '\0')
     return NULL;
@@ -76,6 +86,9 @@ char *extract_ext(char *path)
 }
 
 
+/* return the lynx filetype based on the path passed in
+ *
+ */
 unsigned char lynx_filetype(char *path)
 {
   char *ext;
@@ -97,4 +110,44 @@ unsigned char lynx_filetype(char *path)
     return(FILETYPE_COM);
 
   return(FILETYPE_NONE);
-} 
+}
+
+
+/* Pad out the filename+ext to 11 characters
+ * without the period.  Copy into the dest string.
+ * dest string must be at least 12 characters
+ * returns 1 on success, 0 on any failure
+ */
+#ifdef SDCARD_BENNVENN
+bool extract_and_pad_filename(const char *filename, char *dest)
+{
+    size_t n;
+    char fn[13];
+    const char *ext;
+    char s[40];
+
+  	// extract filename.ext
+  	strncpy(fn, filename, sizeof(fn) - 1);
+    fn[sizeof(fn) - 1] = '\0';
+
+ 	  // find dot, and truncate filename portion
+    n = strcspn(fn, ".");
+    fn[n] = '\0';
+
+	  // extract ext
+	  ext = extract_ext(filename);
+
+	  // sanity check
+	  if (strlen(fn) > 8 || strlen(ext) > 3)
+		  return(false);
+
+    // return padded filename and extension
+  	sprintf(dest, "%-8.8s%-3.3s", fn, ext);
+
+    //sprintf(s, "dest:%s", dest);
+    //tgi_outtextxy(0, 70, s);    
+    //cgetc();
+
+	  return(true);
+}
+#endif
