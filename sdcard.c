@@ -213,7 +213,7 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 {
 	unsigned char n;
 	unsigned int s, transfer;
-  char str[40];
+  //char str[40];
 
   	n = 3;
   	while (n) {

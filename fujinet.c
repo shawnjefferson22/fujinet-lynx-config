@@ -19,10 +19,10 @@
 #include "fujinet.h"
 
 
-#define FN_RETRIES   3       // number of retries for commands
+#define FN_RETRIES   3      // number of retries for commands
 
-char fn_cmd[512];   // Fujinet command to send + aux bytes (might need to be increased to 1024)
-unsigned short fn_len;       // length of data returned
+char fn_cmd[512];           // Fujinet command to send + aux bytes (might need to be increased to 1024)
+unsigned int fn_len;        // length of data returned
 
 char host_slots[MAX_HOSTS][MAX_HOSTNAME_LEN];
 FN_DISK_SLOT disk_slots[MAX_DISK_SLOTS];

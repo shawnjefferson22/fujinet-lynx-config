@@ -77,19 +77,43 @@ void _checksum(char *b, unsigned short len)
  */
 unsigned char _serial_get_loop(void)
 {
-  clock_t start, now;
-
+  clock_t start;
   start = clock();
-  while (ser_get(&_r) == SER_ERR_NO_DATA) {
-    now = clock();
-    if (((now - start) / CLOCKS_PER_SEC) > RECV_TIMEOUT) {
-      //_r = FUJICMD_NAK;
+  
+  while (1) {
+    if (ser_get(&_r) == SER_ERR_OK)
+      return 1;
+
+    if ((clock() - start) > (RECV_TIMEOUT * CLOCKS_PER_SEC)) {
       _fn_error = FNIO_ERR_TIMEOUT;
-      return(0);
+      return 0;
     }
   }
 
   return(1);
+}
+
+
+unsigned char _serial_recv_bytes(char *buf, unsigned int len)
+{
+    unsigned int i;
+    clock_t start = clock();
+
+
+    for (i = 0; i < len; i++) {
+        while (ser_get(&_r) == SER_ERR_NO_DATA) {
+            if ((clock() - start) > (RECV_TIMEOUT * CLOCKS_PER_SEC)) {
+                _fn_error = FNIO_ERR_TIMEOUT;
+                return 0;
+            }
+        }
+
+        buf[i] = _r;
+    }
+
+
+
+    return 1;
 }
 
 
@@ -106,9 +130,9 @@ void fnio_flush_recv(void)
  * @param len Length of buffer to send
  * @return 1 on ACK, 0 on NAK
  */
-unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len)
+unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned int len)
 {
-  register unsigned short i;
+  register unsigned int i;
   unsigned char ret;
 
 
@@ -152,11 +176,9 @@ unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len)
 }
 
 
-unsigned char fnio_recv_buf(char *buf, unsigned short *len)
+unsigned char fnio_recv_buf(char *buf, unsigned int *len)
 {
-  register unsigned short i;
   unsigned char t;
-
 
   // reset error status
   _fn_error = FNIO_ERR_NONE;
@@ -164,7 +186,7 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
   // Get first length byte
   t = _serial_get_loop();
   if (!t)
-	return(0);
+	  return(0);
   *len = _r << 8;
 
   // Get second length byte
@@ -177,12 +199,9 @@ unsigned char fnio_recv_buf(char *buf, unsigned short *len)
 	  *len = LEN_MAX;
 
   // Now get the payload
-  for (i=0; i<*len; ++i) {
-	  t = _serial_get_loop();
-	  if (!t)
-	  	return(0);
-   	buf[i] = _r;
-  }
+  t = _serial_recv_bytes(buf, *len);
+  if (!t)
+    return(0);
 
   // Get the checksum
   t = _serial_get_loop();

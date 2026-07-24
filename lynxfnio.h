@@ -10,7 +10,7 @@
 #define LYNXFNIO_H
 
 // Max message size
-#define LEN_MAX		1024
+#define LEN_MAX		1025
 
 // Device IDs
 enum fujiDeviceID_t {
@@ -187,13 +187,13 @@ extern unsigned char _fn_error;
 // helper functions
 void _checksum(char *b, unsigned short len);
 unsigned char _serial_get_loop(void);
-
+unsigned char _serial_recv_bytes(char *buf, unsigned int len);
 
 unsigned char fnio_error();
 unsigned char fnio_init(void);
 unsigned char fnio_done(void);
-unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned short len);
-unsigned char fnio_recv_buf(char *buf, unsigned short *len);
+unsigned char fnio_send_buf(unsigned char dev, char *buf, unsigned int len);
+unsigned char fnio_recv_buf(char *buf, unsigned int *len);
 unsigned char fnio_recv_ack(void);
 void fnio_flush_recv(void);
 
