@@ -3,6 +3,8 @@
 
 #ifdef SDCARD_BENNVENN
 
+#define BV_MAX_WRITE  103
+
 // File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
 typedef struct {
   char long_name[47];				// probably not null terminated

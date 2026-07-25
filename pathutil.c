@@ -124,7 +124,6 @@ bool extract_and_pad_filename(const char *filename, char *dest)
     size_t n;
     char fn[13];
     const char *ext;
-    char s[40];
 
   	// extract filename.ext
   	strncpy(fn, filename, sizeof(fn) - 1);
@@ -143,10 +142,6 @@ bool extract_and_pad_filename(const char *filename, char *dest)
 
     // return padded filename and extension
   	sprintf(dest, "%-8.8s%-3.3s", fn, ext);
-
-    //sprintf(s, "dest:%s", dest);
-    //tgi_outtextxy(0, 70, s);    
-    //cgetc();
 
 	  return(true);
 }

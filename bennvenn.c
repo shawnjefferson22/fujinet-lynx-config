@@ -39,33 +39,8 @@ File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker
 *  The SendCommand function expects a  unsigned char ECSDbuffer[128]; for ingoing and outgoing data to the cart
 */
 
-
 unsigned int bennvenn_num_folders;
 unsigned int bennvenn_num_files;
-
-
-/*
-void dump_sdbuf(void)
-{
-  char s[3];
-  unsigned char i, x, y;
-
-  tgi_clear();
-
-  x = y = 0;
-  for(i=0; i<64; ++i) {
-    sprintf(s, "%02X ", sd_buf[i]);
-    tgi_outtextxy(x, y, s);
-
-    x += 16;
-    if (x > 128) {
-      x = 0;
-      y += 8;
-    }
-  }
-
-  cgetc();
-}*/
 
 
 /* trim spaces off entry
@@ -172,7 +147,6 @@ void bennvenn_file_count(void)
   bennvenn_num_files += (unsigned int) ((sd_buf[7]-'0')*100);
   bennvenn_num_files += (unsigned int) ((sd_buf[8]-'0')*10);
   bennvenn_num_files += (unsigned int) ((sd_buf[9]-'0'));
-
 }
 
 
@@ -195,11 +169,11 @@ void bennvenn_read_next_dir_entry(char *entry)
   	rtrim(entry);		// trim whitespace off right side
 
   	// Is this a directory?
-  	if (bv_entry->type != 1) {					// FIXME: what are the actual type values?
-    	entry[strlen(entry)] = '/';
-    	entry[strlen(entry)+1] = '\0';
-  	}
-  	else
+  	//if (bv_entry->type != 1) {					// FIXME: what are the actual type values?
+    //	entry[strlen(entry)] = '/';
+    //	entry[strlen(entry)+1] = '\0';
+  	//}
+  	//else
     	entry[47] = '\0';						// ensure LFN is null terminated
 }
 
@@ -220,19 +194,19 @@ bool bennvenn_new_file(char *filename, unsigned long size)
 {
   	unsigned char r;
     char fn[12];
-    char s[40];
+    //char s[40];
 
-    sprintf(s, "f:%s", filename);
-    tgi_outtextxy(0, 70, s);
+    //sprintf(s, "f:%s", filename);
+    //tgi_outtextxy(0, 70, s);
 
 	  r = extract_and_pad_filename(filename, fn);
 	  if (!r)
 		  return(false);
 
-    sprintf(s, "f:%s", fn);
-    tgi_outtextxy(0, 78, s);
-    sprintf(s, "s:%-5ld", size);
-    tgi_outtextxy(0, 86, s);
+    //sprintf(s, "f:%s", fn);
+    //tgi_outtextxy(0, 78, s);
+    //sprintf(s, "s:%-5ld", size);
+    //tgi_outtextxy(0, 86, s);
     //cgetc();
 
     //012345678901234567
@@ -258,19 +232,19 @@ bool bennvenn_save(char *filename, unsigned long offset, unsigned char size, cha
 {
   	unsigned char r;
     char fn[12];
-    char s[40];
+    //char s[40];
 
 
 	  // Cannot save more than 108 bytes at a time
-	  if (size > 108)
+	  if (size > BV_MAX_WRITE)
 		  return(false);
 
 	  r = extract_and_pad_filename(filename, fn);
 	  if (!r)
 		  return(false);
 
-    sprintf(s, "o:%-5ld s:%-3d", offset, size);
-    tgi_outtextxy(0, 67, s);
+    //sprintf(s, "o:%-5ld s:%-3d", offset, size);
+    //tgi_outtextxy(0, 56, s);
     //cgetc();
 
     //012345678901234567890
@@ -279,7 +253,7 @@ bool bennvenn_save(char *filename, unsigned long offset, unsigned char size, cha
   	sd_buf[15] = (unsigned char) (offset >> 24);
   	sd_buf[16] = (unsigned char) (offset >> 16);
   	sd_buf[17] = (unsigned char) (offset >> 8);
-  	sd_buf[18] = (unsigned char) (offset);
+  	sd_buf[18] = (unsigned char) (offset & 0xFF);
 
   	sd_buf[19] = size;
   	memcpy(&sd_buf[20], buf, size);

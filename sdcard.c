@@ -105,7 +105,7 @@ bool sd_open_dir(unsigned int entry)
 {
   #ifdef SDCARD_BENNVENN
   bennvenn_open(entry);
-  bennvenn_send_command("DIR4XXX ", 8);
+  bennvenn_send_command("DIR1LNX ", 8);
   bennvenn_file_count();
   sd_num_files = bennvenn_num_folders + bennvenn_num_files;
   #endif
@@ -215,6 +215,11 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 	unsigned int s, transfer;
   //char str[40];
 
+
+  // FIXME: debugging
+	//sprintf(str, "o:%-5ld", offset);
+	//tgi_outtextxy(0, 40, str);
+
   	n = 3;
   	while (n) {
     	#ifdef SDCARD_GAMEDRIVE
@@ -229,14 +234,13 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 
 		#ifdef SDCARD_BENNVENN
 			for (s = 0; s < size; s += transfer) {
-			    transfer = (size - s > 108) ? 108 : (size - s);
+			    transfer = (size - s > BV_MAX_WRITE) ? BV_MAX_WRITE : (size - s);
 
 	        // FIXME: debugging
-		      sprintf(str, "o:%-5ld s:%-3d", (uint32_t) (offset + (uint32_t) s), s);
-		      tgi_outtextxy(0, 58, str);
-    	    //cgetc();
+		      //sprintf(str, "o:%-5ld s:%-3d", (uint32_t) (offset + (uint32_t) s), s);
+		      //tgi_outtextxy(0, 48, str);
 
-			    if (!bennvenn_save(extract_filename(file), (uint32_t) (offset + (uint32_t) s), transfer, &buf[s]))
+			    if (!bennvenn_save(extract_filename(file), (uint32_t) (offset + (uint32_t) s), (uint8_t ) transfer, &buf[s]))
 			    	continue;   // try again
 			}
       
@@ -250,6 +254,7 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
   	return(false);
 }
 
+#ifdef SDCARD_BENNVENN
 
 /* sd_find_filenum
  *
@@ -257,26 +262,33 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
  */
 unsigned int sd_find_filenum(char *filename)
 {
-	char tmp[64];
+	char tmp[sizeof(BV_FILE_STRUCT)];
 	unsigned int i;
 
-  	i = 0;
-  	while (1) {
-  		memset(tmp, 0, 64);
 
-  		#ifdef SDCARD_BENNVENN
-    		bennvenn_set_dir_pos(0);
-      		bennvenn_read_next_dir_entry(tmp);
-			if (tmp[0] == '\0')
-				break;
+  tgi_outtextxy(0, 40, filename);
 
-			if (strcmp(filename, tmp) == 0)
-				return i;
-	 	#else
-	 		(void) filename;
-	 		break;
-	 	#endif
+  bennvenn_send_command("DIR1LNX ", 8);
+	bennvenn_set_dir_pos(0);
+  i = 0;
+
+  while (1) {
+  	memset(tmp, 0, 64);
+
+   	bennvenn_read_next_dir_entry((char *) &tmp);
+    tgi_outtextxy(0, 50, tmp);
+  
+    if (tmp[0] == '\0')
+		  break;
+
+	  if (strcmp(filename, tmp) == 0)
+		  return(i);
+  
+    cgetc();  
+    i++;
 	}
 
 	return(16384);
 }
+
+#endif

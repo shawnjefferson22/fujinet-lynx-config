@@ -385,9 +385,12 @@ bool get_file(unsigned char disk_slot, unsigned char dirpos)
     //}
 	#endif
 	#ifdef SDCARD_BENNVENN
-  		r = select_sdcard_dir();
-  		if (!r)
-  			return(false);
+    strcpy(sd_dir, "/FUJINET/BENNVENN.LNX");
+    strcpy(filename, "/FUJINET/BENNVENN.LNX");
+
+  //r = select_sdcard_dir();
+  //		if (!r)
+  //			return(false);
 	#endif
 
 	// Display downloading dialog
@@ -436,12 +439,7 @@ bool get_file(unsigned char disk_slot, unsigned char dirpos)
 			}
 		}
 
-		// FIXME: debugging
-		//sprintf(s, "o:%-5ld s:%-3d", (uint32_t) ((uint32_t) i * (uint32_t) BLOCK_SIZE), len);
-		//tgi_outtextxy(0, 50, s);
-    //cgetc();
-
-		// Write the block to SD card file
+  	// Write the block to SD card file
     display_file_action("w");
   	r = sd_write_file_block(filename, (uint32_t) ((uint32_t) i * (uint32_t) BLOCK_SIZE), len, disk_block_buffer);
   	if (!r) {
@@ -455,6 +453,29 @@ bool get_file(unsigned char disk_slot, unsigned char dirpos)
 	fujinet_unmount_image(disk_slot);
 	display_file_action("c");
 	sd_close_file();
+
+  // Program and Boot the file
+  #ifdef SDCARD_GAMEDRIVE
+    tgi_outtextxy(2,50, "Programming...");
+    display_file_action("p");
+    if (LynxSD_Program(sd_dir) == FR_OK) {
+      tgi_outtextxy(2, 58, "Launching...");
+      display_file_action("l");
+      LaunchROM();
+    }
+  #endif
+  #ifdef SDCARD_BENNVENN
+    i = sd_find_filenum("BENNVENNLNX");
+    
+    sprintf(s, "i:%d", i);
+    tgi_outtextxy(0, 60, s);
+    
+    //select_sdcard_dir();
+
+    if (i != 16384)
+      bennvenn_open(i);
+  #endif
+
 	return(true);
 }
 
@@ -649,24 +670,6 @@ REDRAW:
       r = get_file(0, dirpos+sel);      // filename[0] has the full dirpath+entry
       if (!r)
 	      goto REOPEN_DIR;
-
-      #ifdef SDCARD_GAMEDRIVE
-      tgi_outtextxy(2,50, "Programming...");
-      display_file_action("p");
-      if (LynxSD_Program(sd_dir) == FR_OK) {
-        tgi_outtextxy(2, 58, "Launching...");
-        display_file_action("l");
-        LaunchROM();
-      }
-      #endif
-
-      #ifdef SDCARD_BENNVENN
-      	delay = sd_find_filenum(extract_filename(&filename[0]));    // re-using delay local var
-      	bennvenn_open(delay);
-
-      	//display_file_data();              // display last block data, testing
-		    // goto REOPEN_DIR;
-      #endif
 
       goto REDRAW;
     }

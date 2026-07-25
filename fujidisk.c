@@ -30,7 +30,6 @@
 
 unsigned int fd_len;                        // length returned
 char dskbuf[BLOCK_SIZE+6];                  // buffer to use for disk
-//char *disk_block_buffer = &dskbuf[5];     // pointer to disk block data
 char uncompressed_dskbuf[BLOCK_SIZE];	      // compressed disk buffer (block size and one header byte)
 char *disk_block_buffer = &uncompressed_dskbuf[0];
 
