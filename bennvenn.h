@@ -3,7 +3,8 @@
 
 #ifdef SDCARD_BENNVENN
 
-#define BV_MAX_WRITE  103
+//#define BV_MAX_WRITE  64
+#define BV_MAX_WRITE  102
 
 // File Index Structure: 64 bytes total. LFN=[0:46]; SFN [47:54] File/Folder Marker[55] ('1'=File, '2'=folder); File Size [56:59]; Cluster Address on SD [60:63]
 typedef struct {
@@ -22,7 +23,8 @@ extern unsigned int __fastcall__ lynx_eewrite_BV(unsigned int cell, unsigned int
 extern unsigned int __fastcall__ lynx_eeread_BV(unsigned char cell);
 
 // command and response
-unsigned char bennvenn_send_command(char data[64], unsigned char length);
+unsigned char bennvenn_send_command(char *data, unsigned char length);
+void bennvenn_send_command_noreply(char *data, unsigned char length);
 void bennvenn_get_response(void);
 
 // bennvenn sdcard functions

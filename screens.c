@@ -461,19 +461,22 @@ bool get_file(unsigned char disk_slot, unsigned char dirpos)
     if (LynxSD_Program(sd_dir) == FR_OK) {
       tgi_outtextxy(2, 58, "Launching...");
       display_file_action("l");
-      LaunchROM();
+      reset_lynx();
     }
   #endif
   #ifdef SDCARD_BENNVENN
     i = sd_find_filenum("BENNVENNLNX");
     
-    sprintf(s, "i:%d", i);
-    tgi_outtextxy(0, 60, s);
+    //sprintf(s, "i:%d", i);
+    //tgi_outtextxy(0, 60, s);
     
-    //select_sdcard_dir();
-
-    if (i != 16384)
+    if (i != 16384) {
+      display_file_action("p");
       bennvenn_open(i);
+      display_file_action("l");
+      reset_lynx();
+    }
+
   #endif
 
 	return(true);

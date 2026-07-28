@@ -20,4 +20,6 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf);
 bool sd_create_file(char *file, uint32_t size);
 unsigned int sd_find_filenum(char *filename);
 
+void reset_lynx();
+
 #endif

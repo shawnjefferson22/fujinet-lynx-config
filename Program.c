@@ -224,7 +224,7 @@ FRESULT __fastcall__ LynxSD_ProgramHomebrew(const char *pFilename)
   return res;
 }
 
-
+/*
 void LaunchROM()
 {
 		u8 *ptr;
@@ -260,6 +260,6 @@ void LaunchROM()
 
 		asm("brk");
 }
-
+*/
 
 #endif

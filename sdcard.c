@@ -211,14 +211,11 @@ bool sd_close_file(void)
 
 bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 {
-	unsigned char n;
-	unsigned int s, transfer;
-  //char str[40];
-
-
-  // FIXME: debugging
-	//sprintf(str, "o:%-5ld", offset);
-	//tgi_outtextxy(0, 40, str);
+	  unsigned char n, r;
+	  unsigned int s, transfer;
+    //char fn[12];
+    //uint32_t off;
+    //char str[40];
 
   	n = 3;
   	while (n) {
@@ -233,14 +230,33 @@ bool sd_write_file_block(char *file, uint32_t offset, uint16_t size, char *buf)
 	  	#endif
 
 		#ifdef SDCARD_BENNVENN
-			for (s = 0; s < size; s += transfer) {
-			    transfer = (size - s > BV_MAX_WRITE) ? BV_MAX_WRITE : (size - s);
+	    //r = extract_and_pad_filename(extract_filename(file), fn);
+      //if (!r)
+		  //  return(false);
 
-	        // FIXME: debugging
-		      //sprintf(str, "o:%-5ld s:%-3d", (uint32_t) (offset + (uint32_t) s), s);
-		      //tgi_outtextxy(0, 48, str);
+      //012345678901234567890
+  	  //SAVEFILENAMEEXT12341DATA
+      //sprintf(sd_buf, "SAVE%8.8s%3.3s", fn, extract_ext(file));
 
-			    if (!bennvenn_save(extract_filename(file), (uint32_t) (offset + (uint32_t) s), (uint8_t ) transfer, &buf[s]))
+      for (s = 0; s < size; s += transfer) {
+			  transfer = (size - s > BV_MAX_WRITE) ? BV_MAX_WRITE : (size - s);
+        //off = (uint32_t) (offset + (uint32_t) s);
+
+        //sprintf(str, "o:%-5ld s:%-3d", off, transfer);
+        //tgi_outtextxy(0, 50, str);
+        //cgetc();
+
+  	    //sd_buf[15] = (unsigned char) ((off >> 24) & 0xFF);
+  	    //sd_buf[16] = (unsigned char) ((off >> 16) & 0xFF);
+  	    //sd_buf[17] = (unsigned char) ((off >> 8) & 0xFF);
+  	    //sd_buf[18] = (unsigned char) (off & 0xFF);
+
+  	    //sd_buf[19] = (uint8_t) transfer;
+  	    //memcpy(&sd_buf[20], &buf[s], transfer);
+
+  	    //bennvenn_send_command_noreply(sd_buf, 20 + (uint8_t) transfer);
+
+			  if (!bennvenn_save(extract_filename(file), (uint32_t) (offset + (uint32_t) s), (uint8_t ) transfer, &buf[s]))
 			    	continue;   // try again
 			}
       
@@ -276,7 +292,7 @@ unsigned int sd_find_filenum(char *filename)
   	memset(tmp, 0, 64);
 
    	bennvenn_read_next_dir_entry((char *) &tmp);
-    tgi_outtextxy(0, 50, tmp);
+    //tgi_outtextxy(0, 50, tmp);
   
     if (tmp[0] == '\0')
 		  break;
@@ -284,11 +300,54 @@ unsigned int sd_find_filenum(char *filename)
 	  if (strcmp(filename, tmp) == 0)
 		  return(i);
   
-    cgetc();  
+    //cgetc();  
     i++;
 	}
 
 	return(16384);
 }
+#endif
 
+
+#define MSTERE0 ((volatile uint8_t *) 0xFD50)
+#define MAPCTL ((volatile uint8_t *) 0xFFF9)
+
+#ifndef SDCARD_NONE
+void reset_lynx()
+{
+		uint8_t *ptr;
+		uint8_t count;
+
+    #ifdef SDCARD_GAMEDRIVE
+		  if (bLaunchLowPower) LynxSD_LowPowerMode();
+    #endif
+
+		asm("sei");
+		*MSTERE0 = 0; // enable all audio channels
+		*MAPCTL = 0; // memory mapping for boot state
+
+		ptr = (uint8_t *) 0xfd00; // timers and audio fd00
+		count = 0x40;//40
+		while (count--)
+		{
+			*ptr++ = 0;
+		}
+
+		*((uint8_t*) 0xFD80) = 0;
+		*((uint8_t*) 0xFD81) = 0;
+		*((uint8_t*) 0xFD92) = 0;
+		*((uint8_t*) 0xFD9C) = 0;
+		*((uint8_t*) 0xFD9D) = 0;
+		*((uint8_t*) 0xFD9E) = 0;
+		*((uint8_t*) 0xFD9D) = 0;
+
+		ptr = (uint8_t*) 0xfda0; // palette
+		count = 0x20;
+		while (count--)
+		{
+			*ptr++ = 0;
+		}
+
+		asm("brk");
+}
 #endif

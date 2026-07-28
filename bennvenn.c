@@ -62,7 +62,7 @@ void rtrim(char *str)
  * Get the response after sending the command to the SD card
  */
 void bennvenn_get_response(void) {
-  unsigned char i, cell;
+/*  unsigned char i, cell;
   unsigned int d;
 
   i = 0;
@@ -72,6 +72,14 @@ void bennvenn_get_response(void) {
     sd_buf[i] = (char) (d >> 8);
 
     i += 2;
+  }*/
+
+  uint16_t i, w, i16 = 0;
+
+  for (i=0; i<128; i+= 2) {
+    w = lynx_eeread_BV(i16++);
+    sd_buf[i] = (char)  (w >> 8);
+    sd_buf[i+1] = (char) w;
   }
 }
 
@@ -81,7 +89,7 @@ void bennvenn_get_response(void) {
  * Send command to BennVenn SD card via eeprom API, and get response into buffer
  * length should be an even number
  */
-unsigned char bennvenn_send_command(char data[64], unsigned char length)
+unsigned char bennvenn_send_command(char *data, unsigned char length)
 {
   unsigned char n;
   unsigned int wait4reply = 2000;
@@ -110,6 +118,24 @@ unsigned char bennvenn_send_command(char data[64], unsigned char length)
   } while (wait4reply != 0);
 
   return(0);
+}
+
+
+/* bennvenn_send_command_noreply
+ *
+ * Send command to BennVenn SD card via eeprom API, and get response into buffer
+ * length should be an even number
+ */
+void bennvenn_send_command_noreply(char *data, unsigned char length)
+{
+  unsigned char n;
+
+
+  // send the command by writing to eeprom
+  for (n=0; n<length; n=n+2) {
+    lynx_eewrite_BV(n/2, ((data[n]<<8) | (data[n+1])));
+  }
+  lynx_eewrite_BV(0x3F, 0x55);			// 0x55 = process instruction.
 }
 
 
@@ -258,9 +284,11 @@ bool bennvenn_save(char *filename, unsigned long offset, unsigned char size, cha
   	sd_buf[19] = size;
   	memcpy(&sd_buf[20], buf, size);
 
-  	r = bennvenn_send_command(sd_buf, 20+size);
+  	bennvenn_send_command(sd_buf, 20+size);
     return(true);
 }
+
+
 
 
 /*
